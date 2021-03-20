@@ -1,0 +1,17 @@
+{
+  "deps": [
+    {
+      "locator": "github.com/ponylang/peg.git",
+      "version": "0.1.1"
+    },
+    {
+      "locator": "github.com/ponylang/regex.git",
+      "version": "1.1.1"
+    },
+    {
+      "locator": "github.com/ponylang/valbytes.git",
+      "version": "0.5.1"
+    }
+  ],
+  "info": {}
+}

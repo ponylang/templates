@@ -1,0 +1,13 @@
+{
+  "locks": [
+    {
+      "locator": "github.com/ponylang/peg.git"
+    },
+    {
+      "locator": "github.com/ponylang/regex.git"
+    },
+    {
+      "locator": "github.com/ponylang/valbytes.git"
+    }
+  ]
+}
