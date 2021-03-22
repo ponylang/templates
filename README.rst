@@ -10,7 +10,7 @@ How to add pony-templates to your project
 
 * Install corral_
 * Run ``corral add github.com/Trundle/pony-templates.git --version 21.3.0``.
-  This will add pony-templates as dependency to your ``correal.json``.
+  This will add pony-templates as dependency to your ``corral.json``.
 * Fetch your dependencies with ``corral fetch``
 * Compile your application with ``corral run -- ponyc``
 
