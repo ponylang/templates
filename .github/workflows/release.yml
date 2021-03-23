@@ -1,0 +1,23 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - \d+.\d+.\d+
+
+jobs:
+  generate-documentation:
+    name: Generate documentation for release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - name: Generate documentation and upload
+        uses: ponylang/library-documentation-action@0.1.6
+        with:
+          site_url: "https://trundle.github.io/pony-templates/"
+          library_name: "templates"
+          docs_build_dir: "build/templates-docs"
+          git_user_name: "Andreas Stührk"
+          git_user_email: "andy@hammerhartes.de"
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
