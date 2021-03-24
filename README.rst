@@ -1,3 +1,9 @@
+.. image:: https://github.com/Trundle/pony-templates/actions/workflows/main.yml/badge.svg
+   :target: https://github.com/Trundle/pony-templates/actions/workflows/main.yml
+
+.. image:: https://img.shields.io/github/license/Trundle/pony-templates.svg
+   :target: https://tldrlegal.com/l/apache2
+
 ==============
 pony-templates
 ==============
@@ -55,6 +61,12 @@ Supported Features
 * Calls: ``{{ escape(var) }}`` calls ``escape`` with argument ``var`` and adds
   the function result to the output. All known functions must be passed as part
   of a ``TemplateContext`` value to the template's constructor.
+
+
+API Documentation
+=================
+
+The API reference can be found at https://trundle.github.io/pony-templates/
 
 
 License
