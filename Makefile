@@ -17,8 +17,17 @@ build/templates: $(SOURCE_FILES)
 	$(GET_DEPENDENCIES_WITH)
 	$(COMPILE_WITH) -o build $(SRC_DIR)
 
+build/templates_dbg: build/templates
+	$(COMPILE_WITH) --debug -o build -b templates_dbg $(SRC_DIR)
+
 test: build/templates
 	$^
+
+build/coverage:
+	mkdir -p build/coverage
+
+coverage: build/coverage build/templates_dbg
+	kcov --include-pattern="/$(SRC_DIR)/" --exclude-pattern="/test/,_test.pony" build/coverage build/templates_dbg
 
 clean:
 	$(CLEAN_DEPENDENCIES_WITH)
