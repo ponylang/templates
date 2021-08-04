@@ -466,14 +466,14 @@
                 
                 
                 <h1 id="templatevalue">TemplateValue<a class="headerlink" href="#templatevalue" title="Permanent link">&para;</a></h1>
-<p><span class="source-link"><a href="../src/templates/template/#L50">[Source]</a></span></p>
+<p><span class="source-link"><a href="../src/templates/template/#L49">[Source]</a></span></p>
 <p>A value that can be used in a template. Either a single value or a
 sequence of values.</p>
 <pre><code class="language-pony">class box TemplateValue
 </code></pre>
 <h2 id="constructors">Constructors<a class="headerlink" href="#constructors" title="Permanent link">&para;</a></h2>
 <h3 id="create">create<a class="headerlink" href="#create" title="Permanent link">&para;</a></h3>
-<p><span class="source-link"><a href="../src/templates/template/#L59">[Source]</a></span></p>
+<p><span class="source-link"><a href="../src/templates/template/#L58">[Source]</a></span></p>
 <pre><code class="language-pony">new box create(
   value: (String val | Seq[TemplateValue box] box),
   properties: HashMap[String val, TemplateValue box, HashEq[String val] val] box = qualify)
@@ -491,7 +491,7 @@ sequence of values.</p>
 <hr />
 <h2 id="public-functions">Public Functions<a class="headerlink" href="#public-functions" title="Permanent link">&para;</a></h2>
 <h3 id="apply">apply<a class="headerlink" href="#apply" title="Permanent link">&para;</a></h3>
-<p><span class="source-link"><a href="../src/templates/template/#L73">[Source]</a></span></p>
+<p><span class="source-link"><a href="../src/templates/template/#L72">[Source]</a></span></p>
 <pre><code class="language-pony">fun box apply(
   name: String val)
 : TemplateValue box ?
@@ -506,7 +506,7 @@ sequence of values.</p>
 </ul>
 <hr />
 <h3 id="string">string<a class="headerlink" href="#string" title="Permanent link">&para;</a></h3>
-<p><span class="source-link"><a href="../src/templates/template/#L75">[Source]</a></span></p>
+<p><span class="source-link"><a href="../src/templates/template/#L74">[Source]</a></span></p>
 <pre><code class="language-pony">fun box string()
 : String val ?
 </code></pre>
@@ -516,7 +516,7 @@ sequence of values.</p>
 </ul>
 <hr />
 <h3 id="values">values<a class="headerlink" href="#values" title="Permanent link">&para;</a></h3>
-<p><span class="source-link"><a href="../src/templates/template/#L77">[Source]</a></span></p>
+<p><span class="source-link"><a href="../src/templates/template/#L76">[Source]</a></span></p>
 <pre><code class="language-pony">fun box values()
 : Iterator[TemplateValue box] ref
 </code></pre>
