@@ -1,9 +1,3 @@
-.. image:: https://github.com/Trundle/pony-templates/actions/workflows/main.yml/badge.svg
-   :target: https://github.com/Trundle/pony-templates/actions/workflows/main.yml
-
-.. image:: https://img.shields.io/github/license/Trundle/pony-templates.svg
-   :target: https://tldrlegal.com/l/apache2
-
 ==============
 pony-templates
 ==============
