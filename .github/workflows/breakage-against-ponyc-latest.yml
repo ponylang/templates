@@ -1,4 +1,4 @@
-name: ponyc update breakage test
+name: Test against ponyc nightly
 
 on:
   repository_dispatch:
