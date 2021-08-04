@@ -4,7 +4,6 @@ A simple text-based template engine.
 
 use "collections"
 use "files"
-use "regex"
 use "valbytes"
 
 
@@ -153,14 +152,21 @@ class val Template
     var parts: Array[_Part] = []
     var current_parts = parts
     var open: Array[((_IfNode | _IfNotEmptyNode | _LoopNode), Array[_Part])] = []
-    var prev_end: USize = 0
-    for m in Regex("\\{\\{(.+?)\\}\\}")?.matches(source) do
-      if m.start_pos() != prev_end then
-        let literal = source.substring(prev_end.isize(), m.start_pos().isize())
+    var prev_end: ISize = 0
+    while prev_end < source.size().isize() do
+      let start_pos =
+        try source.find("{{" where offset = prev_end)?
+        else break end
+      let end_pos =
+        try source.find("}}" where offset = start_pos)?
+        else break end
+      if start_pos != prev_end then
+        let literal = source.substring(prev_end.isize(), start_pos)
         current_parts.push((_Literal, consume literal))
       end
 
-      match _StmtParser.parse(m(1)?)?
+      let stmt_source: String = source.substring(start_pos + 2, end_pos)
+      match _StmtParser.parse(stmt_source)?
       | _EndNode => current_parts = _parse_end(open, parts)?
       | let prop: _PropNode => current_parts.push(prop)
       | let call: _CallNode =>
@@ -176,10 +182,10 @@ class val Template
         open.push((loop, current_parts))
       end
 
-      prev_end = m.end_pos() + 1
+      prev_end = end_pos + 2
     end
 
-    if prev_end < source.size() then
+    if prev_end < source.size().isize() then
       parts.push((_Literal, source.substring(prev_end.isize())))
     end
 
