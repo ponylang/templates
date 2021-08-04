@@ -69,12 +69,5 @@ API Documentation
 The API reference can be found at https://trundle.github.io/pony-templates/
 
 
-License
-=======
-
-Apache License, Version 2.0. See ``LICENSE`` or
-http://www.apache.org/licenses/LICENSE-2.0.html for details.
-
-
 .. _Pony: https://www.ponylang.io/
 .. _corral: https://github.com/ponylang/corral
