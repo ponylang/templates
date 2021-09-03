@@ -11,7 +11,7 @@ As templates gets used in more projects, we expect to find and fix bugs. We also
 ## Installation
 
 * Install [corral](https://github.com/ponylang/corral)
-* `corral add github.com/ponylang/templates.git --version 0.2.0`
+* `corral add github.com/ponylang/templates.git --version 0.2.1`
 * `corral fetch` to fetch your dependencies
 * `use "appdirs"` to include this package
 * `corral run -- ponyc` to compile your application
