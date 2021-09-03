@@ -1,27 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url>
      <loc>https://ponylang.github.io/templates/</loc>
-     <lastmod>2021-08-04</lastmod>
+     <lastmod>2021-09-03</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://ponylang.github.io/templates/templates--index/</loc>
-     <lastmod>2021-08-04</lastmod>
+     <lastmod>2021-09-03</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://ponylang.github.io/templates/templates-TemplateValue/</loc>
-     <lastmod>2021-08-04</lastmod>
+     <lastmod>2021-09-03</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://ponylang.github.io/templates/templates-TemplateValues/</loc>
-     <lastmod>2021-08-04</lastmod>
+     <lastmod>2021-09-03</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://ponylang.github.io/templates/templates-TemplateContext/</loc>
-     <lastmod>2021-08-04</lastmod>
+     <lastmod>2021-09-03</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://ponylang.github.io/templates/templates-Template/</loc>
-     <lastmod>2021-08-04</lastmod>
+     <lastmod>2021-09-03</lastmod>
      <changefreq>daily</changefreq>
     </url>
 </urlset>
