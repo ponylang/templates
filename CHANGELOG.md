@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file. This projec
 
 ### Fixed
 
+- Update to work with Pony 0.46.0 ([PR #12](https://github.com/ponylang/templates/pull/12))
 
 ### Added
 
