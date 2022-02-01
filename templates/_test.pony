@@ -2,7 +2,7 @@ use "collections"
 use "ponytest"
 
 
-actor Main is TestList
+actor \nodoc\ Main is TestList
   new create(env: Env) => PonyTest(env, this)
 
   new make() => None
@@ -19,7 +19,7 @@ actor Main is TestList
 // XXX test TemplateValues
 
 
-class iso _TemplateTest is UnitTest
+class \nodoc\ iso _TemplateTest is UnitTest
   fun name(): String => "Template basic functionality"
 
   fun apply(h: TestHelper)? =>
@@ -46,7 +46,7 @@ class iso _TemplateTest is UnitTest
     h.assert_eq[String]("inner value", nested_template.render(values)?)
 
 
-class iso _LoopTest is UnitTest
+class \nodoc\ iso _LoopTest is UnitTest
   fun name(): String => "Template loops"
 
   fun apply(h: TestHelper)? =>
@@ -67,7 +67,7 @@ class iso _LoopTest is UnitTest
     // XXX check end without loop
 
 
-class iso _IfTest is UnitTest
+class \nodoc\ iso _IfTest is UnitTest
   fun name(): String => "Template if"
 
   fun apply(h: TestHelper)? =>
@@ -79,7 +79,7 @@ class iso _IfTest is UnitTest
     h.assert_eq[String]("Eggs", template.render(values)?)
 
 
-class iso _IfNotEmptyTest is UnitTest
+class \nodoc\ iso _IfNotEmptyTest is UnitTest
   fun name(): String => "Template ifnotempty"
 
   fun apply(h: TestHelper)? =>
@@ -96,7 +96,7 @@ class iso _IfNotEmptyTest is UnitTest
     // XXX check end without ifnotempty
 
 
-class iso _CallTest is UnitTest
+class \nodoc\ iso _CallTest is UnitTest
   fun name(): String => "Template calls"
 
   fun apply(h: TestHelper)? =>
@@ -113,7 +113,7 @@ class iso _CallTest is UnitTest
     h.assert_eq[String]("foofoo", template.render(values)?)
 
 
-class iso _StmtParserTest is UnitTest
+class \nodoc\ iso _StmtParserTest is UnitTest
   fun name(): String => "Template statement parser"
 
   fun apply(h: TestHelper) =>
