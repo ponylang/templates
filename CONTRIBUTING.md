@@ -30,12 +30,12 @@ If possible, try to isolate the problem and provide just enough code to demonstr
 
 ## How to Contribute
 
-This project uses a fairly standard GitHub pull request workflow. If you have already contributed to a project via GitHub pull request, you can skip this section and proceed to the [specific details of what we ask for in a pull request](#pull-request). If this is your first time contributing to a project via GitHub, read on.
+We use a fairly standard GitHub pull request workflow. If you have already contributed to a project via GitHub pull request, you can skip this section and proceed to the [specific details of what we ask for in a pull request](#pull-request). If this is your first time contributing to a project via GitHub, read on.
 
 Here is the basic GitHub workflow:
 
 1. Fork this repo. you can do this via the GitHub website. This will result in you having your own copy of the repo under your GitHub account.
-2. Clone your forked repo to your local machine
+2. Clone your fork to your local machine
 3. Make a branch for your change
 4. Make your change on that branch
 5. Push your change to your repo
@@ -44,12 +44,12 @@ Here is the basic GitHub workflow:
 Some things to note that aren't immediately obvious to folks just starting out:
 
 1. Your fork doesn't automatically stay up to date with changes in the main repo.
-2. Any changes you make on your branch that you used for one PR will automatically appear in another PR so if you have more than 1 PR, be sure to always create different branches for them.
-3. Weird things happen with commit history if you don't create your PR branches off of `main` so always make sure you have the `main` branch checked out before creating a branch for a PR
+2. Any changes you make on your branch that you used for the PR will automatically appear in the PR so if you have more than 1 PR, be sure to always create different branches for them.
+3. Weird things happen with commit history if you don't create your PR branches off of main so always make sure you have the main branch checked out before creating a branch for a PR
 
-If you feel overwhelmed at any point, don't worry, it can be a lot to learn when you get started. You can usually find me on the [Pony IRC](https://webchat.freenode.net/?channels=%ponylang) if you need help.
+If you feel overwhelmed at any point, don't worry, it can be a lot to learn when you get started. Feel free to reach out via [Zulip](https://ponylang.zulipchat.com/#narrow/stream/192795-contribute-to-Pony).
 
-You can get help using GitHub via [the official documentation](https://help.github.com/). Some hightlights include:
+You can get help using GitHub via [the official documentation](https://help.github.com/). Some highlights include:
 
 * [Fork A Repo](https://help.github.com/articles/fork-a-repo/)
 * [Creating a pull request](https://help.github.com/articles/creating-a-pull-request/)
