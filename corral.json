@@ -17,7 +17,7 @@
     "homepage": "https://github.com/ponylang/templates",
     "license": "BSD-2-Clause",
     "documentation_url": "https://ponylang.github.io/templates/",
-    "version": "0.2.3",
+    "version": "0.2.4",
     "name": "templates"
   }
 }
