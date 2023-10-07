@@ -6,6 +6,7 @@ All notable changes to this project will be documented in this file. This projec
 
 ### Fixed
 
+- Update peg dependency ([PR #30](https://github.com/ponylang/templates/pull/30))
 
 ### Added
 
