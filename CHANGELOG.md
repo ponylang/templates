@@ -2,17 +2,11 @@
 
 All notable changes to this project will be documented in this file. This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a CHANGELOG](http://keepachangelog.com/).
 
-## [unreleased] - unreleased
+## [0.2.4] - 2023-10-07
 
 ### Fixed
 
 - Update peg dependency ([PR #30](https://github.com/ponylang/templates/pull/30))
-
-### Added
-
-
-### Changed
-
 
 ## [0.2.3] - 2022-02-26
 
