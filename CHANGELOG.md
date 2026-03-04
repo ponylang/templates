@@ -15,6 +15,7 @@ All notable changes to this project will be documented in this file. This projec
 ### Changed
 
 - Update ponylang/peg dependency ([PR #34](https://github.com/ponylang/templates/pull/34))
+- Unify `if` and `ifnotempty` conditionals ([PR #48](https://github.com/ponylang/templates/pull/48))
 
 ## [0.2.4] - 2023-10-07
 
