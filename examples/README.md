@@ -8,7 +8,7 @@ Parses a template with a single placeholder, binds a value, and renders the resu
 
 ## [conditionals-example](conditionals-example/)
 
-Shows how to use `if`/`else` and `if`/`elseif`/`else` blocks to conditionally include content based on whether values are present. Demonstrates simple two-branch conditionals and chained multi-branch selection.
+Shows how to use `if`/`else`, `if`/`elseif`/`else`, and `ifnot` blocks to conditionally include content based on whether values are present or absent. Demonstrates simple two-branch conditionals, chained multi-branch selection, and negated conditionals for the absent-variable case.
 
 ## [functions-example](functions-example/)
 

@@ -7,6 +7,8 @@ blocks. Supported block types:
 * **Variable substitution**: `{{ name }}` or `{{ obj.prop }}`
 * **Conditionals**: `{{ if flag }}...{{ end }}`, with optional
   `{{ else }}` and `{{ elseif other }}` branches
+* **Negated conditionals**: `{{ ifnot flag }}...{{ end }}`, renders when
+  the variable is absent; supports `{{ else }}` and `{{ elseif }}`
 * **Existence check**: `{{ ifnotempty seq }}...{{ end }}`
 * **Loops**: `{{ for item in items }}...{{ end }}`
 * **Function calls**: `{{ fn(arg) }}` using functions registered via
@@ -44,16 +46,37 @@ class _If
 
 class box _IfElse
   """
-  Marker on the open-block stack indicating an `if` that has transitioned to
-  its `else` branch. Stores the original condition and if-body so they can be
-  assembled into the final `_If` node when `end` is encountered.
+  Marker on the open-block stack indicating an `if` or `ifnot` block that has
+  transitioned to its `else` branch. Stores the original condition and if-body
+  so they can be assembled into the final `_If` or `_IfNot` node when `end` is
+  encountered.
   """
   let value: _PropNode
   let if_body: Array[_Part] box
+  let negated: Bool
 
-  new box create(value': _PropNode, if_body': Array[_Part] box) =>
+  new box create(
+    value': _PropNode,
+    if_body': Array[_Part] box,
+    negated': Bool = false
+  ) =>
     value = value'
     if_body = if_body'
+    negated = negated'
+
+class _IfNot
+  let value: _PropNode
+  let body: Array[_Part] box
+  let else_body: (Array[_Part] box | None)
+
+  new box create(
+    value': _PropNode,
+    body': Array[_Part] box,
+    else_body': (Array[_Part] box | None) = None
+  ) =>
+    value = value'
+    body = body'
+    else_body = else_body'
 
 class _IfNotEmpty
   let value: _PropNode
@@ -73,7 +96,9 @@ class _Loop
     source = source'
     body = body'
 
-type _Part is ((_Literal, String) | _Call box | _PropNode | _If box | _IfNotEmpty box | _Loop box)
+type _Part is
+  ( (_Literal, String) | _Call box | _PropNode
+  | _If box | _IfNot box | _IfNotEmpty box | _Loop box )
 
 
 class box TemplateValue
@@ -181,7 +206,7 @@ class val Template
   fun tag _parse(source: String, ctx: TemplateContext val): Array[_Part] box? =>
     var parts: Array[_Part] = []
     var current_parts = parts
-    var open: Array[((_IfNode | _IfNotEmptyNode | _LoopNode | _IfElse), Array[_Part], Bool)] = []
+    var open: Array[((_IfNode | _IfNotNode | _IfNotEmptyNode | _LoopNode | _IfElse), Array[_Part], Bool)] = []
     var prev_end: ISize = 0
     while prev_end < source.size().isize() do
       let start_pos =
@@ -207,6 +232,9 @@ class val Template
       | let if': _IfNode =>
         current_parts = Array[_Part]
         open.push((if', current_parts, false))
+      | let ifnot: _IfNotNode =>
+        current_parts = Array[_Part]
+        open.push((ifnot, current_parts, false))
       | let ifnotempty: _IfNotEmptyNode =>
         current_parts = Array[_Part]
         open.push((ifnotempty, current_parts, false))
@@ -227,7 +255,7 @@ class val Template
     consume parts
 
   fun tag _parse_end(
-    open: Array[((_IfNode | _IfNotEmptyNode | _LoopNode | _IfElse), Array[_Part], Bool)],
+    open: Array[((_IfNode | _IfNotNode | _IfNotEmptyNode | _LoopNode | _IfElse), Array[_Part], Bool)],
     parts: Array[_Part]
   ): Array[_Part]? =>
     (let stmt, let body, _) = open.pop()?
@@ -235,7 +263,11 @@ class val Template
     let node: _Part =
       match stmt
       | let if': _IfNode => _If(if'.value, body)
-      | let ie: _IfElse => _If(ie.value, ie.if_body, body)
+      | let ifnot: _IfNotNode => _IfNot(ifnot.value, body)
+      | let ie: _IfElse =>
+        if ie.negated then _IfNot(ie.value, ie.if_body, body)
+        else _If(ie.value, ie.if_body, body)
+        end
       | let ifnotempty: _IfNotEmptyNode => _IfNotEmpty(ifnotempty.value, body)
       | let loop: _LoopNode => _Loop(loop.target, loop.source, body)
       end
@@ -248,7 +280,10 @@ class val Template
         match outer_stmt
         | let ie: _IfElse =>
           outer_body.push(current_node)
-          current_node = _If(ie.value, ie.if_body, outer_body)
+          current_node =
+            if ie.negated then _IfNot(ie.value, ie.if_body, outer_body)
+            else _If(ie.value, ie.if_body, outer_body)
+            end
         else
           error // auto_close should only be set on _IfElse entries
         end
@@ -266,7 +301,7 @@ class val Template
     next_current
 
   fun tag _parse_else(
-    open: Array[((_IfNode | _IfNotEmptyNode | _LoopNode | _IfElse), Array[_Part], Bool)]
+    open: Array[((_IfNode | _IfNotNode | _IfNotEmptyNode | _LoopNode | _IfElse), Array[_Part], Bool)]
   ): Array[_Part]? =>
     (let stmt, let if_body, _) = open.pop()?
     match stmt
@@ -274,12 +309,17 @@ class val Template
       let else_body = Array[_Part]
       open.push((_IfElse(if'.value, if_body), else_body, false))
       else_body
+    | let ifnot: _IfNotNode =>
+      let else_body = Array[_Part]
+      open.push(
+        (_IfElse(ifnot.value, if_body where negated' = true), else_body, false))
+      else_body
     else
-      error // else only valid inside an if block
+      error // else only valid inside an if or ifnot block
     end
 
   fun tag _parse_elseif_stmt(
-    open: Array[((_IfNode | _IfNotEmptyNode | _LoopNode | _IfElse), Array[_Part], Bool)],
+    open: Array[((_IfNode | _IfNotNode | _IfNotEmptyNode | _LoopNode | _IfElse), Array[_Part], Bool)],
     else_if: _ElseIfNode
   ): Array[_Part]? =>
     (let stmt, let if_body, _) = open.pop()?
@@ -290,8 +330,15 @@ class val Template
       let else_if_body = Array[_Part]
       open.push((_IfNode(else_if.value), else_if_body, false))
       else_if_body
+    | let ifnot: _IfNotNode =>
+      let else_body = Array[_Part]
+      open.push(
+        (_IfElse(ifnot.value, if_body where negated' = true), else_body, true))
+      let else_if_body = Array[_Part]
+      open.push((_IfNode(else_if.value), else_if_body, false))
+      else_if_body
     else
-      error // elseif only valid inside an if block
+      error // elseif only valid inside an if or ifnot block
     end
 
   fun render(values: TemplateValues box): String? =>
@@ -321,6 +368,22 @@ class val Template
           | let eb: Array[_Part] box =>
             result = result + _render_parts(eb, values)?
           end
+        end
+      | let ifnot: _IfNot box =>
+        if
+          try
+            values._lookup(ifnot.value)?
+            true
+          else
+            false
+          end
+        then
+          match ifnot.else_body
+          | let eb: Array[_Part] box =>
+            result = result + _render_parts(eb, values)?
+          end
+        else
+          result = result + _render_parts(ifnot.body, values)?
         end
       | let ifnotempty: _IfNotEmpty box =>
         if values._lookup(ifnotempty.value)?.values().has_next() then
