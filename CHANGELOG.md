@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file. This projec
 - Add else and elseif branches to if blocks ([PR #46](https://github.com/ponylang/templates/pull/46))
 - Add `ifnot` negated conditional blocks ([PR #47](https://github.com/ponylang/templates/pull/47))
 - Add `include` partials ([PR #49](https://github.com/ponylang/templates/pull/49))
+- Add template inheritance ([PR #50](https://github.com/ponylang/templates/pull/50))
 
 ### Changed
 
