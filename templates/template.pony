@@ -14,6 +14,9 @@ blocks. Supported block types:
 * **Loops**: `{{ for item in items }}...{{ end }}`
 * **Function calls**: `{{ fn(arg) }}` using functions registered via
   `TemplateContext`
+* **Includes**: `{{ include "name" }}` inlines a named partial registered via
+  `TemplateContext`. Partials share the same variable scope and can contain
+  any block type. Circular includes are detected at parse time.
 """
 
 use "collections"
@@ -176,12 +179,22 @@ class TemplateValues
 
 
 class TemplateContext
+  """
+  Configuration for template parsing. Provides named functions that can be
+  called from templates via `{{ fn(arg) }}`, and named partials that can be
+  inlined via `{{ include "name" }}`.
+  """
   let functions: Map[String, {(String): String}] box
+  let partials: Map[String, String] box
 
   new val create(
-    functions': Map[String, {(String): String}] val = recover Map[String, {(String): String}] end
+    functions': Map[String, {(String): String}] val
+      = recover Map[String, {(String): String}] end,
+    partials': Map[String, String] val
+      = recover Map[String, String] end
   ) =>
     functions = functions'
+    partials = partials'
 
 
 class val Template
@@ -202,7 +215,11 @@ class val Template
     else error
     end
 
-  fun tag _parse(source: String, ctx: TemplateContext val): Array[_Part] box? =>
+  fun tag _parse(
+    source: String,
+    ctx: TemplateContext val,
+    include_stack: Array[String] box = []
+  ): Array[_Part] box? =>
     var parts: Array[_Part] = []
     var current_parts = parts
     var open: Array[((_IfNode | _IfNotNode | _LoopNode | _IfElse), Array[_Part], Bool)] = []
@@ -237,6 +254,20 @@ class val Template
       | let loop: _LoopNode =>
         current_parts = Array[_Part]
         open.push((loop, current_parts, false))
+      | let inc: _IncludeNode =>
+        let partial_source = ctx.partials(inc.name)?
+        for name in include_stack.values() do
+          if name == inc.name then error end
+        end
+        let new_stack = Array[String](include_stack.size() + 1)
+        for name in include_stack.values() do
+          new_stack.push(name)
+        end
+        new_stack.push(inc.name)
+        let inline_parts = _parse(partial_source, ctx, new_stack)?
+        for p in inline_parts.values() do
+          current_parts.push(p)
+        end
       end
 
       prev_end = end_pos + 2

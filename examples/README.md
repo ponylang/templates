@@ -13,3 +13,7 @@ Shows how to use `if`/`else`, `if`/`elseif`/`else`, and `ifnot` blocks to condit
 ## [functions-example](functions-example/)
 
 Registers a custom function via `TemplateContext` and calls it from within a template inside a `for` loop. Demonstrates how to extend templates with user-defined transformations.
+
+## [include-example](include-example/)
+
+Registers named partials via `TemplateContext` and inlines them with `{{ include "name" }}`. Demonstrates reusing template fragments across templates, with partials sharing the same variable scope.

@@ -79,6 +79,23 @@ actor \nodoc\ Main is TestList
     test(_TestCallArgMissing)
     test(_TestCallMultipleFunctions)
 
+    // Include parser tests
+    test(Property1UnitTest[String](_PropValidIncludeParsesToIncludeNode))
+    test(_TestParserIncludeNodeFields)
+    test(_TestParserIncludeKeywordAmbiguity)
+
+    // Include parse error tests
+    test(_TestParseErrorMissingPartial)
+    test(_TestParseErrorCircularInclude)
+
+    // Include render tests
+    test(_TestRenderInclude)
+    test(_TestRenderIncludeInsideIf)
+    test(_TestRenderIncludeInsideLoop)
+    test(_TestRenderNestedIncludes)
+    test(_TestRenderMultipleIncludes)
+    test(_TestRenderIncludeWithBlocks)
+
     // from_file test (Step 8)
     test(_TestFromFile)
 
@@ -190,6 +207,25 @@ primitive \nodoc\ _Generators
     """
     valid_prop_stmt().map[String]({(prop) => "elseif " + prop })
 
+  fun valid_include_stmt(): Generator[String] =>
+    """
+    Generates `include "name"` where name matches `[a-zA-Z0-9_-]+`.
+    """
+    let chars: String val =
+      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-"
+    Generator[String](
+      object is GenObj[String]
+        fun generate(rnd: Randomness): String^ =>
+          let len = rnd.usize(1, 20)
+          let name = recover iso String(len) end
+          var i: USize = 0
+          while i < len do
+            try name.push(chars(rnd.usize(0, chars.size() - 1))?) end
+            i = i + 1
+          end
+          "include \"" + consume name + "\""
+      end)
+
   fun invalid_stmt(): Generator[box->String] =>
     """
     Generates invalid statement strings, one per distinct failure mode.
@@ -206,6 +242,8 @@ primitive \nodoc\ _Generators
       ".foo"       // leading dot
       "for x y z"  // invalid loop syntax
       "end."       // trailing dot after end
+      "include \"\"" // empty include name
+      "include \""   // unclosed quote
     ])
 
   fun literal_text(): Generator[String] =>
@@ -1320,6 +1358,231 @@ class \nodoc\ iso _TestCallMultipleFunctions is UnitTest
     let template = Template.parse(
       "{{ double(x) }}-{{ rev(y) }}", ctx)?
     h.assert_eq[String]("abab-dc", template.render(values)?)
+
+
+// ---------------------------------------------------------------------------
+// Include parser tests
+// ---------------------------------------------------------------------------
+
+class \nodoc\ iso _PropValidIncludeParsesToIncludeNode is Property1[String]
+  fun name(): String => "Parser: valid include parses to _IncludeNode"
+
+  fun gen(): Generator[String] =>
+    _Generators.valid_include_stmt()
+
+  fun ref property(stmt: String, h: PropertyHelper) ? =>
+    _StmtParser.parse(stmt)? as _IncludeNode
+
+
+class \nodoc\ iso _TestParserIncludeNodeFields is UnitTest
+  fun name(): String => "Parser: include node field correctness"
+
+  fun apply(h: TestHelper)? =>
+    // include "header" → _IncludeNode(name="header")
+    match _StmtParser.parse("include \"header\"")?
+    | let inc: _IncludeNode =>
+      h.assert_eq[String]("header", inc.name)
+    else h.fail("expected _IncludeNode"); error
+    end
+
+    // include "my-partial" → name with hyphen
+    match _StmtParser.parse("include \"my-partial\"")?
+    | let inc: _IncludeNode =>
+      h.assert_eq[String]("my-partial", inc.name)
+    else h.fail("expected _IncludeNode with hyphen"); error
+    end
+
+    // include "a1_b2" → name with digits and underscores
+    match _StmtParser.parse("include \"a1_b2\"")?
+    | let inc: _IncludeNode =>
+      h.assert_eq[String]("a1_b2", inc.name)
+    else h.fail("expected _IncludeNode with digits"); error
+    end
+
+
+class \nodoc\ iso _TestParserIncludeKeywordAmbiguity is UnitTest
+  fun name(): String => "Parser: include keyword ambiguity"
+
+  fun apply(h: TestHelper) =>
+    // bare "include" → _PropNode (no quoted string follows)
+    h.assert_no_error({() ? =>
+      _StmtParser.parse("include")? as _PropNode
+    })
+
+    // "includefoo" → _PropNode (no space + quote)
+    h.assert_no_error({() ? =>
+      _StmtParser.parse("includefoo")? as _PropNode
+    })
+
+
+// ---------------------------------------------------------------------------
+// Include parse error tests
+// ---------------------------------------------------------------------------
+
+class \nodoc\ iso _TestParseErrorMissingPartial is UnitTest
+  fun name(): String => "Template parse error: missing partial"
+
+  fun apply(h: TestHelper) =>
+    h.assert_error({() ? =>
+      Template.parse("{{ include \"missing\" }}")?
+    })
+
+
+class \nodoc\ iso _TestParseErrorCircularInclude is UnitTest
+  fun name(): String => "Template parse error: circular include"
+
+  fun apply(h: TestHelper) =>
+    // Self-include
+    h.assert_error({() ? =>
+      let partials = recover val
+        let m = Map[String, String]
+        m("self") = "{{ include \"self\" }}"
+        m
+      end
+      let ctx = TemplateContext(
+        recover Map[String, {(String): String}] end, partials)
+      Template.parse("{{ include \"self\" }}", ctx)?
+    })
+
+    // Mutual cycle: a includes b, b includes a
+    h.assert_error({() ? =>
+      let partials = recover val
+        let m = Map[String, String]
+        m("a") = "{{ include \"b\" }}"
+        m("b") = "{{ include \"a\" }}"
+        m
+      end
+      let ctx = TemplateContext(
+        recover Map[String, {(String): String}] end, partials)
+      Template.parse("{{ include \"a\" }}", ctx)?
+    })
+
+
+// ---------------------------------------------------------------------------
+// Include render tests
+// ---------------------------------------------------------------------------
+
+class \nodoc\ iso _TestRenderInclude is UnitTest
+  fun name(): String => "Render: basic include with variable substitution"
+
+  fun apply(h: TestHelper)? =>
+    let partials = recover val
+      let m = Map[String, String]
+      m("greeting") = "Hello {{ name }}!"
+      m
+    end
+    let ctx = TemplateContext(
+      recover Map[String, {(String): String}] end, partials)
+    let template = Template.parse(">> {{ include \"greeting\" }} <<", ctx)?
+    let values = TemplateValues
+    values("name") = "world"
+    h.assert_eq[String](">> Hello world! <<", template.render(values)?)
+
+
+class \nodoc\ iso _TestRenderIncludeInsideIf is UnitTest
+  fun name(): String => "Render: include inside conditional"
+
+  fun apply(h: TestHelper)? =>
+    let partials = recover val
+      let m = Map[String, String]
+      m("badge") = "[{{ role }}]"
+      m
+    end
+    let ctx = TemplateContext(
+      recover Map[String, {(String): String}] end, partials)
+    let template = Template.parse(
+      "{{ if role }}{{ include \"badge\" }}{{ end }}", ctx)?
+
+    // With role
+    let v1 = TemplateValues
+    v1("role") = "admin"
+    h.assert_eq[String]("[admin]", template.render(v1)?)
+
+    // Without role
+    h.assert_eq[String]("", template.render(TemplateValues)?)
+
+
+class \nodoc\ iso _TestRenderIncludeInsideLoop is UnitTest
+  fun name(): String => "Render: include inside loop"
+
+  fun apply(h: TestHelper)? =>
+    let partials = recover val
+      let m = Map[String, String]
+      m("item") = "<{{ x }}>"
+      m
+    end
+    let ctx = TemplateContext(
+      recover Map[String, {(String): String}] end, partials)
+    let template = Template.parse(
+      "{{ for x in items }}{{ include \"item\" }}{{ end }}", ctx)?
+    let values = TemplateValues
+    values("items") = TemplateValue(
+      [TemplateValue("a"); TemplateValue("b"); TemplateValue("c")])
+    h.assert_eq[String]("<a><b><c>", template.render(values)?)
+
+
+class \nodoc\ iso _TestRenderNestedIncludes is UnitTest
+  fun name(): String => "Render: nested includes (A includes B includes C)"
+
+  fun apply(h: TestHelper)? =>
+    let partials = recover val
+      let m = Map[String, String]
+      m("a") = "[{{ include \"b\" }}]"
+      m("b") = "({{ include \"c\" }})"
+      m("c") = "{{ x }}"
+      m
+    end
+    let ctx = TemplateContext(
+      recover Map[String, {(String): String}] end, partials)
+    let template = Template.parse("{{ include \"a\" }}", ctx)?
+    let values = TemplateValues
+    values("x") = "deep"
+    h.assert_eq[String]("[(deep)]", template.render(values)?)
+
+
+class \nodoc\ iso _TestRenderMultipleIncludes is UnitTest
+  fun name(): String => "Render: multiple includes in one template"
+
+  fun apply(h: TestHelper)? =>
+    let partials = recover val
+      let m = Map[String, String]
+      m("header") = "=={{ title }}=="
+      m("footer") = "--end--"
+      m
+    end
+    let ctx = TemplateContext(
+      recover Map[String, {(String): String}] end, partials)
+    let template = Template.parse(
+      "{{ include \"header\" }}\nbody\n{{ include \"footer\" }}", ctx)?
+    let values = TemplateValues
+    values("title") = "Page"
+    h.assert_eq[String]("==Page==\nbody\n--end--", template.render(values)?)
+
+
+class \nodoc\ iso _TestRenderIncludeWithBlocks is UnitTest
+  fun name(): String => "Render: include containing its own blocks"
+
+  fun apply(h: TestHelper)? =>
+    let partials = recover val
+      let m = Map[String, String]
+      m("list") =
+        "{{ if items }}{{ for i in items }}{{ i }},{{ end }}{{ else }}none{{ end }}"
+      m
+    end
+    let ctx = TemplateContext(
+      recover Map[String, {(String): String}] end, partials)
+    let template = Template.parse("Items: {{ include \"list\" }}", ctx)?
+
+    // With items
+    let v1 = TemplateValues
+    v1("items") = TemplateValue(
+      [TemplateValue("x"); TemplateValue("y")])
+    h.assert_eq[String]("Items: x,y,", template.render(v1)?)
+
+    // Without items (empty sequence)
+    let v2 = TemplateValues
+    v2("items") = TemplateValue(Array[TemplateValue])
+    h.assert_eq[String]("Items: none", template.render(v2)?)
 
 
 // ---------------------------------------------------------------------------

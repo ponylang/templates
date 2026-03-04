@@ -54,3 +54,7 @@ As templates gets used in more projects, we expect to find and fix bugs. We also
 * Calls: `{{ escape(var) }}` calls `escape` with argument `var` and adds
   the function result to the output. All known functions must be passed as part
   of a `TemplateContext` value to the template's constructor.
+* Includes: `{{ include "header" }}` inlines a named partial registered via
+  `TemplateContext`. Partials share the same variable scope as the surrounding
+  template and can contain any block type. Circular includes are detected at
+  parse time.
