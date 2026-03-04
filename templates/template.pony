@@ -6,10 +6,11 @@ blocks. Supported block types:
 
 * **Variable substitution**: `{{ name }}` or `{{ obj.prop }}`
 * **Conditionals**: `{{ if flag }}...{{ end }}`, with optional
-  `{{ else }}` and `{{ elseif other }}` branches
+  `{{ else }}` and `{{ elseif other }}` branches. Truthy when the variable
+  exists and, for sequences, is non-empty.
 * **Negated conditionals**: `{{ ifnot flag }}...{{ end }}`, renders when
-  the variable is absent; supports `{{ else }}` and `{{ elseif }}`
-* **Existence check**: `{{ ifnotempty seq }}...{{ end }}`
+  the variable is absent or is an empty sequence; supports `{{ else }}`
+  and `{{ elseif }}`
 * **Loops**: `{{ for item in items }}...{{ end }}`
 * **Function calls**: `{{ fn(arg) }}` using functions registered via
   `TemplateContext`
@@ -78,14 +79,6 @@ class _IfNot
     body = body'
     else_body = else_body'
 
-class _IfNotEmpty
-  let value: _PropNode
-  let body: Array[_Part] box
-
-  new box create(value': _PropNode, body': Array[_Part] box) =>
-    value = value'
-    body = body'
-
 class _Loop
   let target: String
   let source: _PropNode
@@ -98,7 +91,7 @@ class _Loop
 
 type _Part is
   ( (_Literal, String) | _Call box | _PropNode
-  | _If box | _IfNot box | _IfNotEmpty box | _Loop box )
+  | _If box | _IfNot box | _Loop box )
 
 
 class box TemplateValue
@@ -129,6 +122,12 @@ class box TemplateValue
   fun string(): String? => _value as String
 
   fun values(): Iterator[TemplateValue] => _values.values()
+
+  fun box _is_truthy(): Bool =>
+    match _value
+    | let _: String => true
+    else _values.values().has_next()
+    end
 
 
 class TemplateValues
@@ -206,7 +205,7 @@ class val Template
   fun tag _parse(source: String, ctx: TemplateContext val): Array[_Part] box? =>
     var parts: Array[_Part] = []
     var current_parts = parts
-    var open: Array[((_IfNode | _IfNotNode | _IfNotEmptyNode | _LoopNode | _IfElse), Array[_Part], Bool)] = []
+    var open: Array[((_IfNode | _IfNotNode | _LoopNode | _IfElse), Array[_Part], Bool)] = []
     var prev_end: ISize = 0
     while prev_end < source.size().isize() do
       let start_pos =
@@ -235,9 +234,6 @@ class val Template
       | let ifnot: _IfNotNode =>
         current_parts = Array[_Part]
         open.push((ifnot, current_parts, false))
-      | let ifnotempty: _IfNotEmptyNode =>
-        current_parts = Array[_Part]
-        open.push((ifnotempty, current_parts, false))
       | let loop: _LoopNode =>
         current_parts = Array[_Part]
         open.push((loop, current_parts, false))
@@ -255,7 +251,7 @@ class val Template
     consume parts
 
   fun tag _parse_end(
-    open: Array[((_IfNode | _IfNotNode | _IfNotEmptyNode | _LoopNode | _IfElse), Array[_Part], Bool)],
+    open: Array[((_IfNode | _IfNotNode | _LoopNode | _IfElse), Array[_Part], Bool)],
     parts: Array[_Part]
   ): Array[_Part]? =>
     (let stmt, let body, _) = open.pop()?
@@ -268,7 +264,6 @@ class val Template
         if ie.negated then _IfNot(ie.value, ie.if_body, body)
         else _If(ie.value, ie.if_body, body)
         end
-      | let ifnotempty: _IfNotEmptyNode => _IfNotEmpty(ifnotempty.value, body)
       | let loop: _LoopNode => _Loop(loop.target, loop.source, body)
       end
 
@@ -301,7 +296,7 @@ class val Template
     next_current
 
   fun tag _parse_else(
-    open: Array[((_IfNode | _IfNotNode | _IfNotEmptyNode | _LoopNode | _IfElse), Array[_Part], Bool)]
+    open: Array[((_IfNode | _IfNotNode | _LoopNode | _IfElse), Array[_Part], Bool)]
   ): Array[_Part]? =>
     (let stmt, let if_body, _) = open.pop()?
     match stmt
@@ -319,7 +314,7 @@ class val Template
     end
 
   fun tag _parse_elseif_stmt(
-    open: Array[((_IfNode | _IfNotNode | _IfNotEmptyNode | _LoopNode | _IfElse), Array[_Part], Bool)],
+    open: Array[((_IfNode | _IfNotNode | _LoopNode | _IfElse), Array[_Part], Bool)],
     else_if: _ElseIfNode
   ): Array[_Part]? =>
     (let stmt, let if_body, _) = open.pop()?
@@ -360,8 +355,13 @@ class val Template
         let substitution = try values._lookup(prop)?.string()? else "" end
         result = result + substitution
       | let if': _If box =>
-        try
-          values._lookup(if'.value)?
+        if
+          try
+            values._lookup(if'.value)?._is_truthy()
+          else
+            false
+          end
+        then
           result = result + _render_parts(if'.body, values)?
         else
           match if'.else_body
@@ -372,8 +372,7 @@ class val Template
       | let ifnot: _IfNot box =>
         if
           try
-            values._lookup(ifnot.value)?
-            true
+            values._lookup(ifnot.value)?._is_truthy()
           else
             false
           end
@@ -384,10 +383,6 @@ class val Template
           end
         else
           result = result + _render_parts(ifnot.body, values)?
-        end
-      | let ifnotempty: _IfNotEmpty box =>
-        if values._lookup(ifnotempty.value)?.values().has_next() then
-          result = result + _render_parts(ifnotempty.body, values)?
         end
       | let loop: _Loop box =>
         for value in values._lookup(loop.source)?.values() do

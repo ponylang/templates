@@ -49,11 +49,8 @@ As templates gets used in more projects, we expect to find and fix bugs. We also
 * For loops: `{{ for x in xs }}{{ x }} {{ end }}` will iterate through the
   sequence `xs` and adds each element plus a space to the output.
 * Conditional output: `{{ if spam }}Eggs{{ end }}` only adds `Eggs` to the
-  output if the variable `spam` exists. Can also check for the presence of a
-  property.
-
-  `{{ ifnotempty seq }}` ignores everything until the next `{{ end }}` if
-  sequence ``seq`` is empty.
+  output if the variable `spam` exists and, for sequences, is non-empty.
+  Can also check for the presence of a property.
 * Calls: `{{ escape(var) }}` calls `escape` with argument `var` and adds
   the function result to the output. All known functions must be passed as part
   of a `TemplateContext` value to the template's constructor.
