@@ -1,8 +1,9 @@
-// This example demonstrates if/else, if/elseif/else, and ifnot conditional
-// blocks
+// This example demonstrates if/else, if/elseif/else, ifnot, and sequence
+// truthiness in conditional blocks
 
 // In your code this `use` statement would be:
 // use "templates"
+use "collections"
 use "../../templates"
 
 actor Main
@@ -83,3 +84,27 @@ actor Main
 
     // With a name → "Alice"
     try env.out.print(display_name.render(with_name)?) end
+
+    // Sequence truthiness: `if` checks both existence and non-emptiness.
+    // Use `if` to guard a loop so it only renders when items are present.
+    let items_list =
+      try
+        Template.parse(
+          "{{ if items }}Items: {{ for i in items }}{{ i }} {{ end }}" +
+          "{{ else }}No items{{ end }}")?
+      else
+        env.err.print("Could not parse template :(")
+        env.exitcode(1)
+        return
+      end
+
+    // Non-empty sequence → "Items: a b c "
+    let with_items = TemplateValues
+    with_items("items") = TemplateValue(
+      [TemplateValue("a"); TemplateValue("b"); TemplateValue("c")])
+    try env.out.print(items_list.render(with_items)?) end
+
+    // Empty sequence → "No items"
+    let no_items = TemplateValues
+    no_items("items") = TemplateValue(Array[TemplateValue])
+    try env.out.print(items_list.render(no_items)?) end

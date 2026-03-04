@@ -14,7 +14,6 @@ actor \nodoc\ Main is TestList
     test(_TemplateTest)
     test(_LoopTest)
     test(_IfTest)
-    test(_IfNotEmptyTest)
     test(_CallTest)
     test(_StmtParserTest)
 
@@ -32,7 +31,6 @@ actor \nodoc\ Main is TestList
     test(Property1UnitTest[String](_PropValidLoopParsesToLoopNode))
     test(Property1UnitTest[String](_PropValidIfParsesToIfNode))
     test(Property1UnitTest[String](_PropValidIfNotParsesToIfNotNode))
-    test(Property1UnitTest[String](_PropValidIfNotEmptyParsesToIfNotEmptyNode))
     test(Property1UnitTest[String](_PropValidElseIfParsesToElseIfNode))
     test(Property1UnitTest[box->String](_PropInvalidStmtErrors))
     test(_TestParserNodeFields)
@@ -53,7 +51,10 @@ actor \nodoc\ Main is TestList
     test(Property1UnitTest[String](_PropMissingVariableRendersEmpty))
     test(_TestRenderNestedLoop)
     test(_TestRenderLoopWithIf)
-    test(_TestRenderIfNotEmptyWithLoop)
+    test(_TestRenderIfWithSequence)
+    test(_TestRenderIfElseWithSequence)
+    test(_TestRenderIfNotWithSequence)
+    test(_TestRenderIfGuardingLoop)
     test(_TestRenderAdjacentPlaceholders)
     test(_TestRenderLoopVariableShadowing)
 
@@ -183,12 +184,6 @@ primitive \nodoc\ _Generators
     """
     valid_prop_stmt().map[String]({(prop) => "ifnot " + prop })
 
-  fun valid_ifnotempty_stmt(): Generator[String] =>
-    """
-    Generates `ifnotempty prop` — an ifnotempty statement.
-    """
-    valid_prop_stmt().map[String]({(prop) => "ifnotempty " + prop })
-
   fun valid_elseif_stmt(): Generator[String] =>
     """
     Generates `elseif prop` — an elseif statement.
@@ -299,21 +294,6 @@ class \nodoc\ iso _IfTest is UnitTest
     h.assert_eq[String]("Eggs", template.render(values)?)
 
 
-class \nodoc\ iso _IfNotEmptyTest is UnitTest
-  fun name(): String => "Template ifnotempty"
-
-  fun apply(h: TestHelper)? =>
-    let values = TemplateValues
-    values("seqempty") = TemplateValue([])
-    values("seq") = TemplateValue([TemplateValue("spam")])
-    let not_template = Template.parse(
-      """
-      {{ ifnotempty seqempty }}Should not be rendered{{ end }}
-      {{ ifnotempty seq}}Values: {{ for x in seq }}{{x}}{{ end}}{{ end }}
-      """)?
-    h.assert_eq[String]("\nValues: spam\n", not_template.render(values)?)
-
-
 class \nodoc\ iso _CallTest is UnitTest
   fun name(): String => "Template calls"
 
@@ -340,8 +320,6 @@ class \nodoc\ iso _StmtParserTest is UnitTest
       {()? => _StmtParser.parse("foo(spam.eggs)")? as _CallNode })
     h.assert_no_error(
       {()? => _StmtParser.parse("ifnot spam")? as _IfNotNode })
-    h.assert_no_error(
-      {()? => _StmtParser.parse("ifnotempty spam")? as _IfNotEmptyNode })
 
 
 // ---------------------------------------------------------------------------
@@ -498,18 +476,6 @@ class \nodoc\ iso _PropValidIfNotParsesToIfNotNode is Property1[String]
     _StmtParser.parse(stmt)? as _IfNotNode
 
 
-class \nodoc\ iso _PropValidIfNotEmptyParsesToIfNotEmptyNode
-  is Property1[String]
-  fun name(): String =>
-    "Parser: valid ifnotempty parses to _IfNotEmptyNode"
-
-  fun gen(): Generator[String] =>
-    _Generators.valid_ifnotempty_stmt()
-
-  fun ref property(stmt: String, h: PropertyHelper) ? =>
-    _StmtParser.parse(stmt)? as _IfNotEmptyNode
-
-
 class \nodoc\ iso _PropValidElseIfParsesToElseIfNode is Property1[String]
   fun name(): String => "Parser: valid elseif parses to _ElseIfNode"
 
@@ -596,14 +562,6 @@ class \nodoc\ iso _TestParserNodeFields is UnitTest
     else h.fail("expected _IfNotNode"); error
     end
 
-    // "ifnotempty seq" → _IfNotEmptyNode(value=_PropNode("seq", []))
-    match _StmtParser.parse("ifnotempty seq")?
-    | let i: _IfNotEmptyNode =>
-      h.assert_eq[String]("seq", i.value.name)
-      h.assert_eq[USize](0, i.value.props.size())
-    else h.fail("expected _IfNotEmptyNode"); error
-    end
-
     // "  foo  " → _PropNode(name="foo") (whitespace stripped)
     match _StmtParser.parse("  foo  ")?
     | let p: _PropNode =>
@@ -655,11 +613,11 @@ class \nodoc\ iso _TestParserKeywordAmbiguity is UnitTest
       end
     })
 
-    // "ifnotemptyxyz" → _IfNotEmptyNode(value=_PropNode("xyz"))
+    // "ifnotemptyxyz" → _IfNotNode(value=_PropNode("emptyxyz"))
     h.assert_no_error({() ? =>
       match _StmtParser.parse("ifnotemptyxyz")?
-      | let i: _IfNotEmptyNode =>
-        if i.value.name != "xyz" then error end
+      | let i: _IfNotNode =>
+        if i.value.name != "emptyxyz" then error end
       else error
       end
     })
@@ -733,9 +691,6 @@ class \nodoc\ iso _TestParseErrorUnclosedBlock is UnitTest
       Template.parse("{{ ifnot flag }}body")?
     })
     h.assert_error({() ? =>
-      Template.parse("{{ ifnotempty seq }}body")?
-    })
-    h.assert_error({() ? =>
       Template.parse("{{ for x in xs }}{{ if y }}nested")?
     })
 
@@ -803,16 +758,6 @@ class \nodoc\ iso _TestParseErrorElseElseIf is UnitTest
     // elseif in a for loop
     h.assert_error({() ? =>
       Template.parse("{{ for x in xs }}{{ elseif y }}{{ end }}")?
-    })
-
-    // else in an ifnotempty block
-    h.assert_error({() ? =>
-      Template.parse("{{ ifnotempty seq }}{{ else }}{{ end }}")?
-    })
-
-    // elseif in an ifnotempty block
-    h.assert_error({() ? =>
-      Template.parse("{{ ifnotempty seq }}{{ elseif y }}{{ end }}")?
     })
 
     // Double else in ifnot
@@ -935,24 +880,82 @@ class \nodoc\ iso _TestRenderLoopWithIf is UnitTest
     h.assert_eq[String]("*", template.render(values)?)
 
 
-class \nodoc\ iso _TestRenderIfNotEmptyWithLoop is UnitTest
-  fun name(): String => "Render: ifnotempty guarding a loop"
+class \nodoc\ iso _TestRenderIfWithSequence is UnitTest
+  fun name(): String => "Render: if with sequence truthiness"
 
   fun apply(h: TestHelper)? =>
-    // Non-empty case
-    let values = TemplateValues
-    values("items") = TemplateValue(
-      [TemplateValue("x"); TemplateValue("y")])
+    let template = Template.parse("{{ if items }}yes{{ end }}")?
+
+    // Empty sequence → falsy, renders empty
+    let v1 = TemplateValues
+    v1("items") = TemplateValue([])
+    h.assert_eq[String]("", template.render(v1)?)
+
+    // Non-empty sequence → truthy, renders body
+    let v2 = TemplateValues
+    v2("items") = TemplateValue([TemplateValue("a")])
+    h.assert_eq[String]("yes", template.render(v2)?)
+
+    // String value → truthy, renders body (unchanged behavior)
+    let v3 = TemplateValues
+    v3("items") = "hello"
+    h.assert_eq[String]("yes", template.render(v3)?)
+
+
+class \nodoc\ iso _TestRenderIfElseWithSequence is UnitTest
+  fun name(): String => "Render: if/else with empty sequence falls to else"
+
+  fun apply(h: TestHelper)? =>
     let template = Template.parse(
-      "{{ ifnotempty items }}" +
+      "{{ if items }}has items{{ else }}no items{{ end }}")?
+
+    // Empty sequence → else branch
+    let v1 = TemplateValues
+    v1("items") = TemplateValue([])
+    h.assert_eq[String]("no items", template.render(v1)?)
+
+    // Non-empty sequence → if body
+    let v2 = TemplateValues
+    v2("items") = TemplateValue([TemplateValue("a")])
+    h.assert_eq[String]("has items", template.render(v2)?)
+
+
+class \nodoc\ iso _TestRenderIfNotWithSequence is UnitTest
+  fun name(): String => "Render: ifnot with sequence truthiness"
+
+  fun apply(h: TestHelper)? =>
+    let template = Template.parse("{{ ifnot items }}empty{{ end }}")?
+
+    // Empty sequence → ifnot body rendered
+    let v1 = TemplateValues
+    v1("items") = TemplateValue([])
+    h.assert_eq[String]("empty", template.render(v1)?)
+
+    // Non-empty sequence → empty
+    let v2 = TemplateValues
+    v2("items") = TemplateValue([TemplateValue("a")])
+    h.assert_eq[String]("", template.render(v2)?)
+
+
+class \nodoc\ iso _TestRenderIfGuardingLoop is UnitTest
+  fun name(): String => "Render: if guarding a loop with sequences"
+
+  fun apply(h: TestHelper)? =>
+    let template = Template.parse(
+      "{{ if items }}" +
       "{{ for i in items }}{{ i }}{{ end }}" +
       "{{ end }}")?
-    h.assert_eq[String]("xy", template.render(values)?)
+
+    // Non-empty case
+    let v1 = TemplateValues
+    v1("items") = TemplateValue(
+      [TemplateValue("x"); TemplateValue("y")])
+    h.assert_eq[String]("xy", template.render(v1)?)
 
     // Empty case
-    let values2 = TemplateValues
-    values2("items") = TemplateValue([])
-    h.assert_eq[String]("", template.render(values2)?)
+    let v2 = TemplateValues
+    v2("items") = TemplateValue([])
+    h.assert_eq[String]("", template.render(v2)?)
 
 
 class \nodoc\ iso _TestRenderAdjacentPlaceholders is UnitTest

@@ -8,7 +8,6 @@ primitive _TLoop is Label fun text(): String => "Loop"
 primitive _TEnd is Label fun text(): String => "End"
 primitive _TIf is Label fun text(): String => "If"
 primitive _TIfNot is Label fun text(): String => "IfNot"
-primitive _TIfNotEmpty is Label fun text(): String => "IfNotEmpty"
 primitive _TElse is Label fun text(): String => "Else"
 primitive _TElseIf is Label fun text(): String => "ElseIf"
 
@@ -49,12 +48,6 @@ class box _IfNotNode
   new box create(value': _PropNode) =>
     value = value'
 
-class box _IfNotEmptyNode
-  let value: _PropNode
-
-  new box create(value': _PropNode) =>
-    value = value'
-
 class box _LoopNode
   let target: String
   let source: _PropNode
@@ -65,7 +58,7 @@ class box _LoopNode
 
 type _StmtNode is
   ( _EndNode | _ElseNode | _ElseIfNode
-  | _PropNode | _CallNode | _IfNode | _IfNotNode | _IfNotEmptyNode
+  | _PropNode | _CallNode | _IfNode | _IfNotNode
   | _LoopNode )
 
 primitive _StmtParser
@@ -84,13 +77,12 @@ primitive _StmtParser
       let whitespace = (L(" ") / L("\t")).many1()
       let end' = L("end").term(_TEnd)
       let loop = (L("for") * name * L("in") * prop).node(_TLoop).hide(whitespace)
-      let ifnotempty = (L("ifnotempty") * prop).node(_TIfNotEmpty).hide(whitespace)
       let ifnot = (L("ifnot") * prop).node(_TIfNot).hide(whitespace)
       let else_if = (L("elseif") * prop).node(_TElseIf).hide(whitespace)
       let else' = L("else").term(_TElse)
       let if' = (L("if") * prop).node(_TIf).hide(whitespace)
 
-      let stmt = ifnotempty / ifnot / if' / loop / else_if / else' / end' / expr
+      let stmt = ifnot / if' / loop / else_if / else' / end' / expr
       stmt
     end
 
@@ -105,7 +97,6 @@ primitive _StmtParser
       match ast.label()
       | let if': _TIf => _parse_if(ast as AST)?
       | let ifnot: _TIfNot => _parse_ifnot(ast as AST)?
-      | let ifnotempty: _TIfNotEmpty => _parse_ifnotempty(ast as AST)?
       | let _: _TElse => _ElseNode
       | let _: _TElseIf => _parse_elseif(ast as AST)?
       | let _: _TEnd => _EndNode
@@ -127,9 +118,6 @@ primitive _StmtParser
 
   fun _parse_ifnot(ast: AST): _IfNotNode? =>
     _IfNotNode(_parse_prop(ast.children(1)? as AST)?)
-
-  fun _parse_ifnotempty(ast: AST): _IfNotEmptyNode? =>
-    _IfNotEmptyNode(_parse_prop(ast.children(1)? as AST)?)
 
   fun _parse_elseif(ast: AST): _ElseIfNode? =>
     _ElseIfNode(_parse_prop(ast.children(1)? as AST)?)

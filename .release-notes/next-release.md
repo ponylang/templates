@@ -11,9 +11,11 @@ let t = Template.parse(
 
 `elseif` chains can be as long as needed. A final `else` branch is optional and renders when no condition matches.
 
+`if` checks both existence and non-emptiness: a variable bound to an empty sequence is falsy, so `{{ if items }}` naturally guards a loop without a separate check.
+
 ## Add `ifnot` negated conditional blocks
 
-`ifnot` renders its body when a variable is absent — the logical inverse of `if`. This lets you write the "missing" case as the primary branch instead of requiring an `if`/`else` just to get at the `else`.
+`ifnot` renders its body when a variable is absent or is an empty sequence — the logical inverse of `if`. This lets you write the "missing" case as the primary branch instead of requiring an `if`/`else` just to get at the `else`.
 
 ```pony
 let t = Template.parse(
@@ -26,4 +28,3 @@ Like `if`, `ifnot` supports `else` and `elseif` branches:
 let t = Template.parse(
   "{{ ifnot name }}Anonymous{{ else }}{{ name }}{{ end }}")?
 ```
-
