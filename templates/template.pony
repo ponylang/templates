@@ -17,6 +17,13 @@ blocks. Supported block types:
 * **Includes**: `{{ include "name" }}` inlines a named partial registered via
   `TemplateContext`. Partials share the same variable scope and can contain
   any block type. Circular includes are detected at parse time.
+* **Template inheritance**: A child template declares
+  `{{ extends "base" }}` as its first statement and overrides named blocks
+  defined in the base with `{{ block name }}...{{ end }}`. Base templates are
+  registered as partials via `TemplateContext`. Blocks not overridden render
+  their default content from the base. Multi-level inheritance is supported.
+  Content outside `{{ block }}` definitions in a child template is silently
+  ignored. Circular extends chains are detected at parse time.
 """
 
 use "collections"
@@ -92,9 +99,17 @@ class _Loop
     source = source'
     body = body'
 
+class _Block
+  let name: String
+  let body: Array[_Part] box
+
+  new box create(name': String, body': Array[_Part] box) =>
+    name = name'
+    body = body'
+
 type _Part is
   ( (_Literal, String) | _Call box | _PropNode
-  | _If box | _IfNot box | _Loop box )
+  | _If box | _IfNot box | _Loop box | _Block box )
 
 
 class box TemplateValue
@@ -182,7 +197,8 @@ class TemplateContext
   """
   Configuration for template parsing. Provides named functions that can be
   called from templates via `{{ fn(arg) }}`, and named partials that can be
-  inlined via `{{ include "name" }}`.
+  inlined via `{{ include "name" }}` or used as base templates for
+  inheritance via `{{ extends "name" }}`.
   """
   let functions: Map[String, {(String): String}] box
   let partials: Map[String, String] box
@@ -201,7 +217,7 @@ class val Template
   let _parts: Array[_Part] box
 
   new val parse(source: String, ctx: TemplateContext val = TemplateContext())? =>
-    _parts = _parse(source, ctx)?
+    _parts = _parse_template(source, ctx)?
 
   new val from_file(path: FilePath, ctx: TemplateContext val = TemplateContext())? =>
     let chunk_size: USize = 1024 * 1024 * 1
@@ -211,7 +227,7 @@ class val Template
       while file.errno() is FileOK do
         data = data + file.read(chunk_size)
       end
-      _parts = _parse(data.string(), ctx)?
+      _parts = _parse_template(data.string(), ctx)?
     else error
     end
 
@@ -222,7 +238,8 @@ class val Template
   ): Array[_Part] box? =>
     var parts: Array[_Part] = []
     var current_parts = parts
-    var open: Array[((_IfNode | _IfNotNode | _LoopNode | _IfElse), Array[_Part], Bool)] = []
+    var open: Array[((_IfNode | _IfNotNode | _LoopNode | _IfElse | _BlockNode), Array[_Part], Bool)] = []
+    var first_stmt: Bool = true
     var prev_end: ISize = 0
     while prev_end < source.size().isize() do
       let start_pos =
@@ -268,8 +285,14 @@ class val Template
         for p in inline_parts.values() do
           current_parts.push(p)
         end
+      | let ext: _ExtendsNode =>
+        if not first_stmt then error end
+      | let blk: _BlockNode =>
+        current_parts = Array[_Part]
+        open.push((blk, current_parts, false))
       end
 
+      first_stmt = false
       prev_end = end_pos + 2
     end
 
@@ -282,7 +305,7 @@ class val Template
     consume parts
 
   fun tag _parse_end(
-    open: Array[((_IfNode | _IfNotNode | _LoopNode | _IfElse), Array[_Part], Bool)],
+    open: Array[((_IfNode | _IfNotNode | _LoopNode | _IfElse | _BlockNode), Array[_Part], Bool)],
     parts: Array[_Part]
   ): Array[_Part]? =>
     (let stmt, let body, _) = open.pop()?
@@ -296,6 +319,7 @@ class val Template
         else _If(ie.value, ie.if_body, body)
         end
       | let loop: _LoopNode => _Loop(loop.target, loop.source, body)
+      | let blk: _BlockNode => _Block(blk.name, body)
       end
 
     // Auto-close elseif chain entries
@@ -327,7 +351,7 @@ class val Template
     next_current
 
   fun tag _parse_else(
-    open: Array[((_IfNode | _IfNotNode | _LoopNode | _IfElse), Array[_Part], Bool)]
+    open: Array[((_IfNode | _IfNotNode | _LoopNode | _IfElse | _BlockNode), Array[_Part], Bool)]
   ): Array[_Part]? =>
     (let stmt, let if_body, _) = open.pop()?
     match stmt
@@ -345,7 +369,7 @@ class val Template
     end
 
   fun tag _parse_elseif_stmt(
-    open: Array[((_IfNode | _IfNotNode | _LoopNode | _IfElse), Array[_Part], Bool)],
+    open: Array[((_IfNode | _IfNotNode | _LoopNode | _IfElse | _BlockNode), Array[_Part], Bool)],
     else_if: _ElseIfNode
   ): Array[_Part]? =>
     (let stmt, let if_body, _) = open.pop()?
@@ -366,6 +390,107 @@ class val Template
     else
       error // elseif only valid inside an if or ifnot block
     end
+
+  fun tag _parse_template(
+    source: String,
+    ctx: TemplateContext val,
+    include_stack: Array[String] box = []
+  ): Array[_Part] box? =>
+    match _check_extends(source)?
+    | let base_name: String =>
+      for name in include_stack.values() do
+        if name == base_name then error end
+      end
+      let child_parts = _parse(source, ctx, include_stack)?
+      let overrides = _extract_blocks(child_parts)?
+      let base_source = ctx.partials(base_name)?
+      let new_stack = Array[String](include_stack.size() + 1)
+      for name in include_stack.values() do
+        new_stack.push(name)
+      end
+      new_stack.push(base_name)
+      _apply_overrides(_parse_template(base_source, ctx, new_stack)?, overrides)
+    else
+      _parse(source, ctx, include_stack)?
+    end
+
+  fun tag _check_extends(source: String): (String | None)? =>
+    let start_pos =
+      try source.find("{{")?
+      else return None
+      end
+    let end_pos =
+      try source.find("}}" where offset = start_pos)?
+      else return None
+      end
+    let stmt_source: String val = source.substring(start_pos + 2, end_pos)
+    match _StmtParser.parse(stmt_source)?
+    | let ext: _ExtendsNode => ext.name
+    else None
+    end
+
+  fun tag _extract_blocks(
+    parts: Array[_Part] box
+  ): Map[String, Array[_Part] box]? =>
+    let blocks = Map[String, Array[_Part] box]
+    for part in parts.values() do
+      match part
+      | let blk: _Block box =>
+        if blocks.contains(blk.name) then error end
+        blocks(blk.name) = blk.body
+      end
+    end
+    blocks
+
+  fun tag _apply_overrides(
+    parts: Array[_Part] box,
+    overrides: Map[String, Array[_Part] box] box
+  ): Array[_Part] box =>
+    let result = Array[_Part]
+    for part in parts.values() do
+      match part
+      | let blk: _Block box =>
+        try
+          let override_body = overrides(blk.name)?
+          for p in override_body.values() do
+            result.push(p)
+          end
+        else
+          result.push(
+            _Block(blk.name, _apply_overrides(blk.body, overrides)))
+        end
+      | let if': _If box =>
+        let new_else: (Array[_Part] box | None) =
+          match if'.else_body
+          | let eb: Array[_Part] box =>
+            _apply_overrides(eb, overrides)
+          else None
+          end
+        result.push(
+          _If(if'.value, _apply_overrides(if'.body, overrides), new_else))
+      | let ifnot: _IfNot box =>
+        let new_else: (Array[_Part] box | None) =
+          match ifnot.else_body
+          | let eb: Array[_Part] box =>
+            _apply_overrides(eb, overrides)
+          else None
+          end
+        result.push(
+          _IfNot(
+            ifnot.value,
+            _apply_overrides(ifnot.body, overrides),
+            new_else))
+      | let loop: _Loop box =>
+        result.push(
+          _Loop(
+            loop.target,
+            loop.source,
+            _apply_overrides(loop.body, overrides)))
+      else
+        result.push(part)
+      end
+    end
+    result
 
   fun render(values: TemplateValues box): String? =>
     """
@@ -420,6 +545,8 @@ class val Template
           let body_values = values._override(loop.target, value)
           result = result + _render_parts(loop.body, body_values)?
         end
+      | let blk: _Block box =>
+        result = result + _render_parts(blk.body, values)?
       end
     end
     result.string()

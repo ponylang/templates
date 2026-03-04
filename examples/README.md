@@ -17,3 +17,7 @@ Registers a custom function via `TemplateContext` and calls it from within a tem
 ## [include-example](include-example/)
 
 Registers named partials via `TemplateContext` and inlines them with `{{ include "name" }}`. Demonstrates reusing template fragments across templates, with partials sharing the same variable scope.
+
+## [inheritance-example](inheritance-example/)
+
+Defines a base HTML layout with `{{ block head }}` and `{{ block content }}` sections, then creates a child template that extends the base and overrides both blocks. Demonstrates template inheritance via `{{ extends "base" }}` and `{{ block name }}...{{ end }}`.

@@ -11,6 +11,8 @@ primitive _TIfNot is Label fun text(): String => "IfNot"
 primitive _TElse is Label fun text(): String => "Else"
 primitive _TElseIf is Label fun text(): String => "ElseIf"
 primitive _TInclude is Label fun text(): String => "Include"
+primitive _TExtends is Label fun text(): String => "Extends"
+primitive _TBlock is Label fun text(): String => "Block"
 
 primitive _EndNode
 primitive _ElseNode
@@ -63,10 +65,22 @@ class box _LoopNode
     target = target'
     source = source'
 
+class box _ExtendsNode
+  let name: String
+
+  new box create(name': String) =>
+    name = name'
+
+class box _BlockNode
+  let name: String
+
+  new box create(name': String) =>
+    name = name'
+
 type _StmtNode is
   ( _EndNode | _ElseNode | _ElseIfNode
   | _PropNode | _CallNode | _IfNode | _IfNotNode
-  | _LoopNode | _IncludeNode )
+  | _LoopNode | _IncludeNode | _ExtendsNode | _BlockNode )
 
 primitive _StmtParser
   fun _parser(): Parser val =>
@@ -93,8 +107,13 @@ primitive _StmtParser
       let partial_name = (L("\"") * partial_char.many1() * L("\"")).term(_TName)
       let include = (L("include") * partial_name).node(_TInclude)
         .hide(whitespace)
+      let extends' = (L("extends") * partial_name).node(_TExtends)
+        .hide(whitespace)
+      let block' = (L("block") * name).node(_TBlock).hide(whitespace)
 
-      let stmt = ifnot / if' / loop / include / else_if / else' / end' / expr
+      let stmt =
+        extends' / ifnot / if' / loop / include / block' / else_if
+          / else' / end' / expr
       stmt
     end
 
@@ -115,6 +134,8 @@ primitive _StmtParser
       | let call: _TCall => _parse_call(ast as AST)?
       | let loop: _TLoop => _parse_loop(ast as AST)?
       | let _: _TInclude => _parse_include(ast as AST)?
+      | let _: _TExtends => _parse_extends(ast as AST)?
+      | let _: _TBlock => _parse_block(ast as AST)?
       | let prop: _TProp => _parse_prop(ast as AST)?
       else error
       end
@@ -144,6 +165,15 @@ primitive _StmtParser
     let quoted = (ast.children(1)? as Token).string()
     let name = quoted.substring(1, -1)
     _IncludeNode(consume name)
+
+  fun _parse_extends(ast: AST): _ExtendsNode? =>
+    let quoted = (ast.children(1)? as Token).string()
+    let name = quoted.substring(1, -1)
+    _ExtendsNode(consume name)
+
+  fun _parse_block(ast: AST): _BlockNode? =>
+    let block_name = (ast.children(1)? as Token).string()
+    _BlockNode(consume block_name)
 
   fun _parse_prop(ast: AST): _PropNode? =>
     let name = (ast.children(0)? as Token).string()

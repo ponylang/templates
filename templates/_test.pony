@@ -96,6 +96,30 @@ actor \nodoc\ Main is TestList
     test(_TestRenderMultipleIncludes)
     test(_TestRenderIncludeWithBlocks)
 
+    // Extends/block parser tests
+    test(Property1UnitTest[String](_PropValidExtendsParsesToExtendsNode))
+    test(Property1UnitTest[String](_PropValidBlockParsesToBlockNode))
+    test(_TestParserExtendsBlockNodeFields)
+    test(_TestParserExtendsBlockKeywordAmbiguity)
+
+    // Extends/block parse error tests
+    test(_TestParseErrorExtendsNotFirst)
+    test(_TestParseErrorExtendsMissingBase)
+    test(_TestParseErrorCircularExtends)
+    test(_TestParseErrorElseAfterBlock)
+    test(_TestParseErrorElseIfAfterBlock)
+    test(_TestParseErrorDuplicateBlock)
+
+    // Inheritance render tests
+    test(_TestRenderInheritanceBasic)
+    test(_TestRenderInheritanceMultipleBlocks)
+    test(_TestRenderInheritanceEmptyDefault)
+    test(_TestRenderInheritanceBlockInsideIf)
+    test(_TestRenderInheritanceMultiLevel)
+    test(_TestRenderInheritanceWithIncludes)
+    test(_TestRenderInheritanceBlockWithVariables)
+    test(_TestRenderBlocksWithoutExtends)
+
     // from_file test (Step 8)
     test(_TestFromFile)
 
@@ -145,6 +169,19 @@ primitive \nodoc\ _Generators
         if (s.size() >= 3) and s.at("if", 0) then
           try
             let c = s(2)?
+            if ((c >= 'a') and (c <= 'z'))
+              or ((c >= 'A') and (c <= 'Z'))
+              or (c == '_')
+            then
+              return (consume s, false)
+            end
+          end
+        end
+        // Reject names starting with "block" + alpha/underscore
+        // (parses as _BlockNode, same as "iffy" → _IfNode)
+        if (s.size() >= 6) and s.at("block", 0) then
+          try
+            let c = s(5)?
             if ((c >= 'a') and (c <= 'z'))
               or ((c >= 'A') and (c <= 'Z'))
               or (c == '_')
@@ -225,6 +262,31 @@ primitive \nodoc\ _Generators
           end
           "include \"" + consume name + "\""
       end)
+
+  fun valid_extends_stmt(): Generator[String] =>
+    """
+    Generates `extends "name"` where name matches `[a-zA-Z0-9_-]+`.
+    """
+    let chars: String val =
+      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-"
+    Generator[String](
+      object is GenObj[String]
+        fun generate(rnd: Randomness): String^ =>
+          let len = rnd.usize(1, 20)
+          let name = recover iso String(len) end
+          var i: USize = 0
+          while i < len do
+            try name.push(chars(rnd.usize(0, chars.size() - 1))?) end
+            i = i + 1
+          end
+          "extends \"" + consume name + "\""
+      end)
+
+  fun valid_block_stmt(): Generator[String] =>
+    """
+    Generates `block name` where name is a valid identifier.
+    """
+    valid_name().map[String]({(name) => "block " + name })
 
   fun invalid_stmt(): Generator[box->String] =>
     """
@@ -1583,6 +1645,381 @@ class \nodoc\ iso _TestRenderIncludeWithBlocks is UnitTest
     let v2 = TemplateValues
     v2("items") = TemplateValue(Array[TemplateValue])
     h.assert_eq[String]("Items: none", template.render(v2)?)
+
+
+// ---------------------------------------------------------------------------
+// Extends/block parser tests
+// ---------------------------------------------------------------------------
+
+class \nodoc\ iso _PropValidExtendsParsesToExtendsNode is Property1[String]
+  fun name(): String => "Parser: valid extends parses to _ExtendsNode"
+
+  fun gen(): Generator[String] =>
+    _Generators.valid_extends_stmt()
+
+  fun ref property(stmt: String, h: PropertyHelper) ? =>
+    _StmtParser.parse(stmt)? as _ExtendsNode
+
+
+class \nodoc\ iso _PropValidBlockParsesToBlockNode is Property1[String]
+  fun name(): String => "Parser: valid block parses to _BlockNode"
+
+  fun gen(): Generator[String] =>
+    _Generators.valid_block_stmt()
+
+  fun ref property(stmt: String, h: PropertyHelper) ? =>
+    _StmtParser.parse(stmt)? as _BlockNode
+
+
+class \nodoc\ iso _TestParserExtendsBlockNodeFields is UnitTest
+  fun name(): String => "Parser: extends and block node field correctness"
+
+  fun apply(h: TestHelper)? =>
+    // extends "base" → _ExtendsNode(name="base")
+    match _StmtParser.parse("extends \"base\"")?
+    | let ext: _ExtendsNode =>
+      h.assert_eq[String]("base", ext.name)
+    else h.fail("expected _ExtendsNode"); error
+    end
+
+    // extends "my-layout" → name with hyphen
+    match _StmtParser.parse("extends \"my-layout\"")?
+    | let ext: _ExtendsNode =>
+      h.assert_eq[String]("my-layout", ext.name)
+    else h.fail("expected _ExtendsNode with hyphen"); error
+    end
+
+    // block content → _BlockNode(name="content")
+    match _StmtParser.parse("block content")?
+    | let blk: _BlockNode =>
+      h.assert_eq[String]("content", blk.name)
+    else h.fail("expected _BlockNode"); error
+    end
+
+    // block head → _BlockNode(name="head")
+    match _StmtParser.parse("block head")?
+    | let blk: _BlockNode =>
+      h.assert_eq[String]("head", blk.name)
+    else h.fail("expected _BlockNode"); error
+    end
+
+
+class \nodoc\ iso _TestParserExtendsBlockKeywordAmbiguity is UnitTest
+  fun name(): String => "Parser: extends/block keyword ambiguity"
+
+  fun apply(h: TestHelper) =>
+    // bare "extends" → _PropNode (no quoted string follows)
+    h.assert_no_error({() ? =>
+      _StmtParser.parse("extends")? as _PropNode
+    })
+
+    // "extendsfoo" → _PropNode (no space + quote)
+    h.assert_no_error({() ? =>
+      _StmtParser.parse("extendsfoo")? as _PropNode
+    })
+
+    // bare "block" → _PropNode (no space + name follows)
+    h.assert_no_error({() ? =>
+      _StmtParser.parse("block")? as _PropNode
+    })
+
+    // "blockfoo" → _BlockNode("foo") (like "iffy" → _IfNode)
+    h.assert_no_error({() ? =>
+      match _StmtParser.parse("blockfoo")?
+      | let blk: _BlockNode =>
+        if blk.name != "foo" then error end
+      else error
+      end
+    })
+
+
+// ---------------------------------------------------------------------------
+// Extends/block parse error tests
+// ---------------------------------------------------------------------------
+
+class \nodoc\ iso _TestParseErrorExtendsNotFirst is UnitTest
+  fun name(): String => "Template parse error: extends not first statement"
+
+  fun apply(h: TestHelper) =>
+    // extends after a variable substitution
+    h.assert_error({() ? =>
+      let partials = recover val
+        let m = Map[String, String]
+        m("base") = "base content"
+        m
+      end
+      let ctx = TemplateContext(
+        recover Map[String, {(String): String}] end, partials)
+      Template.parse("{{ name }}{{ extends \"base\" }}", ctx)?
+    })
+
+    // extends after an if block
+    h.assert_error({() ? =>
+      let partials = recover val
+        let m = Map[String, String]
+        m("base") = "base content"
+        m
+      end
+      let ctx = TemplateContext(
+        recover Map[String, {(String): String}] end, partials)
+      Template.parse(
+        "{{ if x }}y{{ end }}{{ extends \"base\" }}", ctx)?
+    })
+
+
+class \nodoc\ iso _TestParseErrorExtendsMissingBase is UnitTest
+  fun name(): String => "Template parse error: extends references missing base"
+
+  fun apply(h: TestHelper) =>
+    h.assert_error({() ? =>
+      Template.parse("{{ extends \"nonexistent\" }}")?
+    })
+
+
+class \nodoc\ iso _TestParseErrorCircularExtends is UnitTest
+  fun name(): String => "Template parse error: circular extends"
+
+  fun apply(h: TestHelper) =>
+    // Self-extends
+    h.assert_error({() ? =>
+      let partials = recover val
+        let m = Map[String, String]
+        m("self") = "{{ extends \"self\" }}"
+        m
+      end
+      let ctx = TemplateContext(
+        recover Map[String, {(String): String}] end, partials)
+      Template.parse("{{ extends \"self\" }}", ctx)?
+    })
+
+    // Mutual cycle: a extends b, b extends a
+    h.assert_error({() ? =>
+      let partials = recover val
+        let m = Map[String, String]
+        m("a") = "{{ extends \"b\" }}"
+        m("b") = "{{ extends \"a\" }}"
+        m
+      end
+      let ctx = TemplateContext(
+        recover Map[String, {(String): String}] end, partials)
+      Template.parse("{{ extends \"a\" }}", ctx)?
+    })
+
+
+class \nodoc\ iso _TestParseErrorElseAfterBlock is UnitTest
+  fun name(): String => "Template parse error: else after block"
+
+  fun apply(h: TestHelper) =>
+    h.assert_error({() ? =>
+      Template.parse("{{ block content }}body{{ else }}alt{{ end }}")?
+    })
+
+
+class \nodoc\ iso _TestParseErrorElseIfAfterBlock is UnitTest
+  fun name(): String => "Template parse error: elseif after block"
+
+  fun apply(h: TestHelper) =>
+    h.assert_error({() ? =>
+      Template.parse(
+        "{{ block content }}body{{ elseif x }}alt{{ end }}")?
+    })
+
+
+class \nodoc\ iso _TestParseErrorDuplicateBlock is UnitTest
+  fun name(): String =>
+    "Template parse error: duplicate block names in child"
+
+  fun apply(h: TestHelper) =>
+    h.assert_error({() ? =>
+      let partials = recover val
+        let m = Map[String, String]
+        m("base") = "{{ block slot }}default{{ end }}"
+        m
+      end
+      let ctx = TemplateContext(
+        recover Map[String, {(String): String}] end, partials)
+      Template.parse(
+        "{{ extends \"base\" }}" +
+        "{{ block slot }}first{{ end }}" +
+        "{{ block slot }}second{{ end }}",
+        ctx)?
+    })
+
+
+// ---------------------------------------------------------------------------
+// Inheritance render tests
+// ---------------------------------------------------------------------------
+
+class \nodoc\ iso _TestRenderInheritanceBasic is UnitTest
+  fun name(): String => "Render: basic inheritance overrides one block"
+
+  fun apply(h: TestHelper)? =>
+    let partials = recover val
+      let m = Map[String, String]
+      m("base") =
+        "<head>{{ block head }}default{{ end }}</head>" +
+        "<body>{{ block content }}{{ end }}</body>"
+      m
+    end
+    let ctx = TemplateContext(
+      recover Map[String, {(String): String}] end, partials)
+    let template = Template.parse(
+      "{{ extends \"base\" }}" +
+      "{{ block content }}Hello!{{ end }}",
+      ctx)?
+    let values = TemplateValues
+    h.assert_eq[String](
+      "<head>default</head><body>Hello!</body>",
+      template.render(values)?)
+
+
+class \nodoc\ iso _TestRenderInheritanceMultipleBlocks is UnitTest
+  fun name(): String =>
+    "Render: inheritance overrides subset of blocks"
+
+  fun apply(h: TestHelper)? =>
+    let partials = recover val
+      let m = Map[String, String]
+      m("base") =
+        "{{ block a }}A{{ end }}-{{ block b }}B{{ end }}" +
+        "-{{ block c }}C{{ end }}"
+      m
+    end
+    let ctx = TemplateContext(
+      recover Map[String, {(String): String}] end, partials)
+
+    // Override only 'a' and 'c', leave 'b' as default
+    let template = Template.parse(
+      "{{ extends \"base\" }}" +
+      "{{ block a }}X{{ end }}" +
+      "{{ block c }}Z{{ end }}",
+      ctx)?
+    h.assert_eq[String]("X-B-Z", template.render(TemplateValues)?)
+
+
+class \nodoc\ iso _TestRenderInheritanceEmptyDefault is UnitTest
+  fun name(): String => "Render: block with empty default"
+
+  fun apply(h: TestHelper)? =>
+    let partials = recover val
+      let m = Map[String, String]
+      m("base") = "before{{ block slot }}{{ end }}after"
+      m
+    end
+    let ctx = TemplateContext(
+      recover Map[String, {(String): String}] end, partials)
+
+    // Without override — empty default
+    let t1 = Template.parse(
+      "{{ extends \"base\" }}", ctx)?
+    h.assert_eq[String]("beforeafter", t1.render(TemplateValues)?)
+
+    // With override — fills slot
+    let t2 = Template.parse(
+      "{{ extends \"base\" }}{{ block slot }}FILL{{ end }}", ctx)?
+    h.assert_eq[String]("beforeFILLafter", t2.render(TemplateValues)?)
+
+
+class \nodoc\ iso _TestRenderInheritanceBlockInsideIf is UnitTest
+  fun name(): String => "Render: block inside if/for in base"
+
+  fun apply(h: TestHelper)? =>
+    let partials = recover val
+      let m = Map[String, String]
+      m("base") =
+        "{{ if show }}{{ block content }}default{{ end }}{{ end }}"
+      m
+    end
+    let ctx = TemplateContext(
+      recover Map[String, {(String): String}] end, partials)
+    let template = Template.parse(
+      "{{ extends \"base\" }}" +
+      "{{ block content }}overridden{{ end }}",
+      ctx)?
+
+    // show present → overridden block renders
+    let v1 = TemplateValues
+    v1("show") = "yes"
+    h.assert_eq[String]("overridden", template.render(v1)?)
+
+    // show absent → if body not rendered
+    h.assert_eq[String]("", template.render(TemplateValues)?)
+
+
+class \nodoc\ iso _TestRenderInheritanceMultiLevel is UnitTest
+  fun name(): String => "Render: multi-level inheritance (3 levels)"
+
+  fun apply(h: TestHelper)? =>
+    let partials = recover val
+      let m = Map[String, String]
+      m("grandparent") =
+        "[{{ block title }}GP{{ end }}|{{ block body }}GP-body{{ end }}]"
+      m("parent") =
+        "{{ extends \"grandparent\" }}" +
+        "{{ block body }}P-body{{ end }}"
+      m
+    end
+    let ctx = TemplateContext(
+      recover Map[String, {(String): String}] end, partials)
+
+    // Child overrides title, parent already overrode body
+    let template = Template.parse(
+      "{{ extends \"parent\" }}" +
+      "{{ block title }}Child{{ end }}",
+      ctx)?
+    h.assert_eq[String]("[Child|P-body]", template.render(TemplateValues)?)
+
+
+class \nodoc\ iso _TestRenderInheritanceWithIncludes is UnitTest
+  fun name(): String => "Render: inheritance combined with includes"
+
+  fun apply(h: TestHelper)? =>
+    let partials = recover val
+      let m = Map[String, String]
+      m("nav") = "[NAV]"
+      m("base") =
+        "{{ include \"nav\" }}{{ block content }}default{{ end }}"
+      m
+    end
+    let ctx = TemplateContext(
+      recover Map[String, {(String): String}] end, partials)
+    let template = Template.parse(
+      "{{ extends \"base\" }}" +
+      "{{ block content }}page{{ end }}",
+      ctx)?
+    h.assert_eq[String]("[NAV]page", template.render(TemplateValues)?)
+
+
+class \nodoc\ iso _TestRenderInheritanceBlockWithVariables is UnitTest
+  fun name(): String => "Render: block overrides using template variables"
+
+  fun apply(h: TestHelper)? =>
+    let partials = recover val
+      let m = Map[String, String]
+      m("base") =
+        "<title>{{ block title }}Default{{ end }}</title>"
+      m
+    end
+    let ctx = TemplateContext(
+      recover Map[String, {(String): String}] end, partials)
+    let template = Template.parse(
+      "{{ extends \"base\" }}" +
+      "{{ block title }}{{ page_title }}{{ end }}",
+      ctx)?
+    let values = TemplateValues
+    values("page_title") = "My Page"
+    h.assert_eq[String]("<title>My Page</title>", template.render(values)?)
+
+
+class \nodoc\ iso _TestRenderBlocksWithoutExtends is UnitTest
+  fun name(): String =>
+    "Render: standalone template with blocks renders defaults"
+
+  fun apply(h: TestHelper)? =>
+    let template = Template.parse(
+      "before{{ block slot }}DEFAULT{{ end }}after")?
+    h.assert_eq[String](
+      "beforeDEFAULTafter", template.render(TemplateValues)?)
 
 
 // ---------------------------------------------------------------------------
