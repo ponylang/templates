@@ -10,6 +10,7 @@ All notable changes to this project will be documented in this file. This projec
 ### Added
 
 - Add else and elseif branches to if blocks ([PR #46](https://github.com/ponylang/templates/pull/46))
+- Add `ifnot` negated conditional blocks ([PR #47](https://github.com/ponylang/templates/pull/47))
 
 ### Changed
 
