@@ -8,8 +8,17 @@ primitive _TLoop is Label fun text(): String => "Loop"
 primitive _TEnd is Label fun text(): String => "End"
 primitive _TIf is Label fun text(): String => "If"
 primitive _TIfNotEmpty is Label fun text(): String => "IfNotEmpty"
+primitive _TElse is Label fun text(): String => "Else"
+primitive _TElseIf is Label fun text(): String => "ElseIf"
 
 primitive _EndNode
+primitive _ElseNode
+
+class box _ElseIfNode
+  let value: _PropNode
+
+  new box create(value': _PropNode) =>
+    value = value'
 
 class box _PropNode
   let name: String
@@ -47,7 +56,9 @@ class box _LoopNode
     target = target'
     source = source'
 
-type _StmtNode is (_EndNode | _PropNode | _CallNode | _IfNode | _IfNotEmptyNode | _LoopNode)
+type _StmtNode is
+  ( _EndNode | _ElseNode | _ElseIfNode
+  | _PropNode | _CallNode | _IfNode | _IfNotEmptyNode | _LoopNode )
 
 primitive _StmtParser
   fun _parser(): Parser val =>
@@ -66,9 +77,11 @@ primitive _StmtParser
       let end' = L("end").term(_TEnd)
       let loop = (L("for") * name * L("in") * prop).node(_TLoop).hide(whitespace)
       let ifnotempty = (L("ifnotempty") * prop).node(_TIfNotEmpty).hide(whitespace)
+      let else_if = (L("elseif") * prop).node(_TElseIf).hide(whitespace)
+      let else' = L("else").term(_TElse)
       let if' = (L("if") * prop).node(_TIf).hide(whitespace)
 
-      let stmt = ifnotempty / if' / loop / end' / expr
+      let stmt = ifnotempty / if' / loop / else_if / else' / end' / expr
       stmt
     end
 
@@ -83,6 +96,8 @@ primitive _StmtParser
       match ast.label()
       | let if': _TIf => _parse_if(ast as AST)?
       | let ifnotempty: _TIfNotEmpty => _parse_ifnotempty(ast as AST)?
+      | let _: _TElse => _ElseNode
+      | let _: _TElseIf => _parse_elseif(ast as AST)?
       | let _: _TEnd => _EndNode
       | let call: _TCall => _parse_call(ast as AST)?
       | let loop: _TLoop => _parse_loop(ast as AST)?
@@ -102,6 +117,9 @@ primitive _StmtParser
 
   fun _parse_ifnotempty(ast: AST): _IfNotEmptyNode? =>
     _IfNotEmptyNode(_parse_prop(ast.children(1)? as AST)?)
+
+  fun _parse_elseif(ast: AST): _ElseIfNode? =>
+    _ElseIfNode(_parse_prop(ast.children(1)? as AST)?)
 
   fun _parse_loop(ast: AST): _LoopNode? =>
     let target = (ast.children(1)? as Token).string()

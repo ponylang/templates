@@ -32,6 +32,7 @@ actor \nodoc\ Main is TestList
     test(Property1UnitTest[String](_PropValidLoopParsesToLoopNode))
     test(Property1UnitTest[String](_PropValidIfParsesToIfNode))
     test(Property1UnitTest[String](_PropValidIfNotEmptyParsesToIfNotEmptyNode))
+    test(Property1UnitTest[String](_PropValidElseIfParsesToElseIfNode))
     test(Property1UnitTest[box->String](_PropInvalidStmtErrors))
     test(_TestParserNodeFields)
     test(_TestParserKeywordAmbiguity)
@@ -42,6 +43,7 @@ actor \nodoc\ Main is TestList
     test(_TestParseErrorUnknownFunction)
     test(_TestParseErrorMalformedStmt)
     test(_TestParseIncompleteDelimiters)
+    test(_TestParseErrorElseElseIf)
 
     // Template render tests (Step 6)
     test(Property1UnitTest[String](_PropLiteralIdentity))
@@ -53,6 +55,14 @@ actor \nodoc\ Main is TestList
     test(_TestRenderIfNotEmptyWithLoop)
     test(_TestRenderAdjacentPlaceholders)
     test(_TestRenderLoopVariableShadowing)
+
+    // Else/elseif render tests
+    test(_TestRenderIfElse)
+    test(_TestRenderIfElseIf)
+    test(_TestRenderIfElseIfElse)
+    test(_TestRenderMultipleElseIfs)
+    test(_TestRenderIfElseInsideLoop)
+    test(_TestRenderNestedIfElse)
 
     // Function call tests (Step 7)
     test(_TestCallWithNestedProp)
@@ -80,6 +90,7 @@ primitive \nodoc\ _Generators
     filtered to exclude names that parse as keywords:
     - Names starting with "end" (parse as _EndNode or error)
     - Names starting with "if" + alpha/underscore (parse as _IfNode)
+    - Names starting with "else" (parse as _ElseNode, _ElseIfNode, or error)
     """
     let first = _alpha_chars()
     let rest = _alnum_chars()
@@ -99,6 +110,9 @@ primitive \nodoc\ _Generators
       .filter({(s: String): (String^, Bool) =>
         // Reject names starting with "end"
         if s.at("end", 0) then return (consume s, false) end
+        // Reject names starting with "else" (parses as _ElseNode or
+        // _ElseIfNode)
+        if s.at("else", 0) then return (consume s, false) end
         // Reject names starting with "if" + alpha/underscore
         if (s.size() >= 3) and s.at("if", 0) then
           try
@@ -158,6 +172,12 @@ primitive \nodoc\ _Generators
     Generates `ifnotempty prop` — an ifnotempty statement.
     """
     valid_prop_stmt().map[String]({(prop) => "ifnotempty " + prop })
+
+  fun valid_elseif_stmt(): Generator[String] =>
+    """
+    Generates `elseif prop` — an elseif statement.
+    """
+    valid_prop_stmt().map[String]({(prop) => "elseif " + prop })
 
   fun invalid_stmt(): Generator[box->String] =>
     """
@@ -462,6 +482,16 @@ class \nodoc\ iso _PropValidIfNotEmptyParsesToIfNotEmptyNode
     _StmtParser.parse(stmt)? as _IfNotEmptyNode
 
 
+class \nodoc\ iso _PropValidElseIfParsesToElseIfNode is Property1[String]
+  fun name(): String => "Parser: valid elseif parses to _ElseIfNode"
+
+  fun gen(): Generator[String] =>
+    _Generators.valid_elseif_stmt()
+
+  fun ref property(stmt: String, h: PropertyHelper) ? =>
+    _StmtParser.parse(stmt)? as _ElseIfNode
+
+
 class \nodoc\ iso _PropInvalidStmtErrors is Property1[box->String]
   fun name(): String => "Parser: invalid statements error"
 
@@ -546,6 +576,29 @@ class \nodoc\ iso _TestParserNodeFields is UnitTest
     else h.fail("expected _PropNode for stripped input"); error
     end
 
+    // "else" → _ElseNode
+    match _StmtParser.parse("else")?
+    | _ElseNode => None
+    else h.fail("expected _ElseNode"); error
+    end
+
+    // "elseif active" → _ElseIfNode(value=_PropNode("active", []))
+    match _StmtParser.parse("elseif active")?
+    | let ei: _ElseIfNode =>
+      h.assert_eq[String]("active", ei.value.name)
+      h.assert_eq[USize](0, ei.value.props.size())
+    else h.fail("expected _ElseIfNode"); error
+    end
+
+    // "elseif a.b" → _ElseIfNode with dotted prop
+    match _StmtParser.parse("elseif a.b")?
+    | let ei: _ElseIfNode =>
+      h.assert_eq[String]("a", ei.value.name)
+      h.assert_eq[USize](1, ei.value.props.size())
+      h.assert_eq[String]("b", ei.value.props(0)?)
+    else h.fail("expected _ElseIfNode with dotted prop"); error
+    end
+
 
 class \nodoc\ iso _TestParserKeywordAmbiguity is UnitTest
   fun name(): String => "Parser: keyword ambiguity behavior"
@@ -593,6 +646,18 @@ class \nodoc\ iso _TestParserKeywordAmbiguity is UnitTest
       else error
       end
     })
+
+    // "elseiffoo" → _ElseIfNode(value=_PropNode("foo"))
+    h.assert_no_error({() ? =>
+      match _StmtParser.parse("elseiffoo")?
+      | let ei: _ElseIfNode =>
+        if ei.value.name != "foo" then error end
+      else error
+      end
+    })
+
+    // "elsewhere" → error (else matches, "where" is leftover → pos < expected)
+    h.assert_error({() ? => _StmtParser.parse("elsewhere")? })
 
 
 // ---------------------------------------------------------------------------
@@ -650,6 +715,52 @@ class \nodoc\ iso _TestParseIncompleteDelimiters is UnitTest
     let template = Template.parse("Hello {{ name")?
     h.assert_eq[String](
       "Hello {{ name", template.render(TemplateValues)?)
+
+
+class \nodoc\ iso _TestParseErrorElseElseIf is UnitTest
+  fun name(): String => "Template parse error: else/elseif misuse"
+
+  fun apply(h: TestHelper) =>
+    // else at top level
+    h.assert_error({() ? => Template.parse("{{ else }}")? })
+
+    // elseif at top level
+    h.assert_error({() ? => Template.parse("{{ elseif x }}")? })
+
+    // Double else
+    h.assert_error({() ? =>
+      Template.parse("{{ if a }}A{{ else }}B{{ else }}C{{ end }}")?
+    })
+
+    // elseif after else
+    h.assert_error({() ? =>
+      Template.parse("{{ if a }}A{{ else }}B{{ elseif c }}C{{ end }}")?
+    })
+
+    // else in a for loop
+    h.assert_error({() ? =>
+      Template.parse("{{ for x in xs }}{{ else }}{{ end }}")?
+    })
+
+    // elseif in a for loop
+    h.assert_error({() ? =>
+      Template.parse("{{ for x in xs }}{{ elseif y }}{{ end }}")?
+    })
+
+    // else in an ifnotempty block
+    h.assert_error({() ? =>
+      Template.parse("{{ ifnotempty seq }}{{ else }}{{ end }}")?
+    })
+
+    // elseif in an ifnotempty block
+    h.assert_error({() ? =>
+      Template.parse("{{ ifnotempty seq }}{{ elseif y }}{{ end }}")?
+    })
+
+    // Unclosed elseif chain
+    h.assert_error({() ? =>
+      Template.parse("{{ if a }}A{{ elseif b }}B")?
+    })
 
 
 // ---------------------------------------------------------------------------
@@ -799,6 +910,146 @@ class \nodoc\ iso _TestRenderLoopVariableShadowing is UnitTest
       "{{ x }}-{{ for x in items }}{{ x }}{{ end }}-{{ x }}")?
     h.assert_eq[String](
       "outer-inner1inner2-outer", template.render(values)?)
+
+
+class \nodoc\ iso _TestRenderIfElse is UnitTest
+  fun name(): String => "Render: if/else branches"
+
+  fun apply(h: TestHelper)? =>
+    let template = Template.parse("{{ if flag }}yes{{ else }}no{{ end }}")?
+
+    // Value present → if body
+    let values = TemplateValues
+    values("flag") = "true"
+    h.assert_eq[String]("yes", template.render(values)?)
+
+    // Value absent → else body
+    h.assert_eq[String]("no", template.render(TemplateValues)?)
+
+
+class \nodoc\ iso _TestRenderIfElseIf is UnitTest
+  fun name(): String => "Render: if/elseif branches"
+
+  fun apply(h: TestHelper)? =>
+    let template = Template.parse(
+      "{{ if a }}A{{ elseif b }}B{{ end }}")?
+
+    // First matches
+    let v1 = TemplateValues
+    v1("a") = "yes"
+    h.assert_eq[String]("A", template.render(v1)?)
+
+    // Second matches
+    let v2 = TemplateValues
+    v2("b") = "yes"
+    h.assert_eq[String]("B", template.render(v2)?)
+
+    // Neither matches → empty
+    h.assert_eq[String]("", template.render(TemplateValues)?)
+
+    // Both match → first wins
+    let v3 = TemplateValues
+    v3("a") = "yes"
+    v3("b") = "yes"
+    h.assert_eq[String]("A", template.render(v3)?)
+
+
+class \nodoc\ iso _TestRenderIfElseIfElse is UnitTest
+  fun name(): String => "Render: if/elseif/else branches"
+
+  fun apply(h: TestHelper)? =>
+    let template = Template.parse(
+      "{{ if a }}A{{ elseif b }}B{{ else }}C{{ end }}")?
+
+    // First matches
+    let v1 = TemplateValues
+    v1("a") = "yes"
+    h.assert_eq[String]("A", template.render(v1)?)
+
+    // Second matches
+    let v2 = TemplateValues
+    v2("b") = "yes"
+    h.assert_eq[String]("B", template.render(v2)?)
+
+    // None match → else body
+    h.assert_eq[String]("C", template.render(TemplateValues)?)
+
+
+class \nodoc\ iso _TestRenderMultipleElseIfs is UnitTest
+  fun name(): String => "Render: multiple elseif chain"
+
+  fun apply(h: TestHelper)? =>
+    let template = Template.parse(
+      "{{ if a }}A{{ elseif b }}B{{ elseif c }}C{{ else }}D{{ end }}")?
+
+    let v1 = TemplateValues
+    v1("a") = "yes"
+    h.assert_eq[String]("A", template.render(v1)?)
+
+    let v2 = TemplateValues
+    v2("b") = "yes"
+    h.assert_eq[String]("B", template.render(v2)?)
+
+    let v3 = TemplateValues
+    v3("c") = "yes"
+    h.assert_eq[String]("C", template.render(v3)?)
+
+    h.assert_eq[String]("D", template.render(TemplateValues)?)
+
+    // Multiple match → first wins
+    let v5 = TemplateValues
+    v5("b") = "yes"
+    v5("c") = "yes"
+    h.assert_eq[String]("B", template.render(v5)?)
+
+
+class \nodoc\ iso _TestRenderIfElseInsideLoop is UnitTest
+  fun name(): String => "Render: if/else inside for loop"
+
+  fun apply(h: TestHelper)? =>
+    let values = TemplateValues
+
+    let item1_props = Map[String, TemplateValue]
+    item1_props("active") = TemplateValue("yes")
+    let item2_props = Map[String, TemplateValue]
+
+    values("items") = TemplateValue(
+      [TemplateValue("A", item1_props)
+       TemplateValue("B", item2_props)])
+
+    let template = Template.parse(
+      "{{ for x in items }}" +
+      "{{ if x.active }}+{{ else }}-{{ end }}" +
+      "{{ end }}")?
+    h.assert_eq[String]("+-", template.render(values)?)
+
+
+class \nodoc\ iso _TestRenderNestedIfElse is UnitTest
+  fun name(): String => "Render: nested if/else blocks"
+
+  fun apply(h: TestHelper)? =>
+    let template = Template.parse(
+      "{{ if a }}{{ if b }}AB{{ else }}A{{ end }}" +
+      "{{ else }}{{ if b }}B{{ else }}none{{ end }}{{ end }}")?
+
+    // Both present
+    let v1 = TemplateValues
+    v1("a") = "yes"
+    v1("b") = "yes"
+    h.assert_eq[String]("AB", template.render(v1)?)
+
+    // Only a
+    let v2 = TemplateValues
+    v2("a") = "yes"
+    h.assert_eq[String]("A", template.render(v2)?)
+
+    // Only b
+    let v3 = TemplateValues
+    v3("b") = "yes"
+    h.assert_eq[String]("B", template.render(v3)?)
+
+    // Neither
+    h.assert_eq[String]("none", template.render(TemplateValues)?)
 
 
 // ---------------------------------------------------------------------------
