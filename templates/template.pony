@@ -1,5 +1,16 @@
 """
 A simple text-based template engine.
+
+Templates are strings containing literal text interspersed with `{{ ... }}`
+blocks. Supported block types:
+
+* **Variable substitution**: `{{ name }}` or `{{ obj.prop }}`
+* **Conditionals**: `{{ if flag }}...{{ end }}`, with optional
+  `{{ else }}` and `{{ elseif other }}` branches
+* **Existence check**: `{{ ifnotempty seq }}...{{ end }}`
+* **Loops**: `{{ for item in items }}...{{ end }}`
+* **Function calls**: `{{ fn(arg) }}` using functions registered via
+  `TemplateContext`
 """
 
 use "collections"
@@ -20,10 +31,29 @@ class _Call
 class _If
   let value: _PropNode
   let body: Array[_Part] box
+  let else_body: (Array[_Part] box | None)
 
-  new box create(value': _PropNode, body': Array[_Part] box) =>
+  new box create(
+    value': _PropNode,
+    body': Array[_Part] box,
+    else_body': (Array[_Part] box | None) = None
+  ) =>
     value = value'
     body = body'
+    else_body = else_body'
+
+class box _IfElse
+  """
+  Marker on the open-block stack indicating an `if` that has transitioned to
+  its `else` branch. Stores the original condition and if-body so they can be
+  assembled into the final `_If` node when `end` is encountered.
+  """
+  let value: _PropNode
+  let if_body: Array[_Part] box
+
+  new box create(value': _PropNode, if_body': Array[_Part] box) =>
+    value = value'
+    if_body = if_body'
 
 class _IfNotEmpty
   let value: _PropNode
@@ -151,7 +181,7 @@ class val Template
   fun tag _parse(source: String, ctx: TemplateContext val): Array[_Part] box? =>
     var parts: Array[_Part] = []
     var current_parts = parts
-    var open: Array[((_IfNode | _IfNotEmptyNode | _LoopNode), Array[_Part])] = []
+    var open: Array[((_IfNode | _IfNotEmptyNode | _LoopNode | _IfElse), Array[_Part], Bool)] = []
     var prev_end: ISize = 0
     while prev_end < source.size().isize() do
       let start_pos =
@@ -168,18 +198,21 @@ class val Template
       let stmt_source: String = source.substring(start_pos + 2, end_pos)
       match _StmtParser.parse(stmt_source)?
       | _EndNode => current_parts = _parse_end(open, parts)?
+      | _ElseNode => current_parts = _parse_else(open)?
+      | let else_if: _ElseIfNode =>
+        current_parts = _parse_elseif_stmt(open, else_if)?
       | let prop: _PropNode => current_parts.push(prop)
       | let call: _CallNode =>
         current_parts.push(_Call(ctx.functions(call.name)?, call.arg))
       | let if': _IfNode =>
         current_parts = Array[_Part]
-        open.push((if', current_parts))
+        open.push((if', current_parts, false))
       | let ifnotempty: _IfNotEmptyNode =>
         current_parts = Array[_Part]
-        open.push((ifnotempty, current_parts))
+        open.push((ifnotempty, current_parts, false))
       | let loop: _LoopNode =>
         current_parts = Array[_Part]
-        open.push((loop, current_parts))
+        open.push((loop, current_parts, false))
       end
 
       prev_end = end_pos + 2
@@ -194,26 +227,72 @@ class val Template
     consume parts
 
   fun tag _parse_end(
-    open: Array[((_IfNode | _IfNotEmptyNode | _LoopNode), Array[_Part])],
+    open: Array[((_IfNode | _IfNotEmptyNode | _LoopNode | _IfElse), Array[_Part], Bool)],
     parts: Array[_Part]
   ): Array[_Part]? =>
-    (let stmt, let body) = open.pop()?
+    (let stmt, let body, _) = open.pop()?
+
+    let node: _Part =
+      match stmt
+      | let if': _IfNode => _If(if'.value, body)
+      | let ie: _IfElse => _If(ie.value, ie.if_body, body)
+      | let ifnotempty: _IfNotEmptyNode => _IfNotEmpty(ifnotempty.value, body)
+      | let loop: _LoopNode => _Loop(loop.target, loop.source, body)
+      end
+
+    // Auto-close elseif chain entries
+    var current_node: _Part = node
+    while open.size() > 0 do
+      if open(open.size() - 1)?._3 then
+        (let outer_stmt, let outer_body, _) = open.pop()?
+        match outer_stmt
+        | let ie: _IfElse =>
+          outer_body.push(current_node)
+          current_node = _If(ie.value, ie.if_body, outer_body)
+        else
+          error // auto_close should only be set on _IfElse entries
+        end
+      else
+        break
+      end
+    end
 
     let next_current =
       if open.size() == 0 then parts
       else open(open.size() - 1)?._2
       end
 
+    next_current.push(current_node)
+    next_current
+
+  fun tag _parse_else(
+    open: Array[((_IfNode | _IfNotEmptyNode | _LoopNode | _IfElse), Array[_Part], Bool)]
+  ): Array[_Part]? =>
+    (let stmt, let if_body, _) = open.pop()?
     match stmt
     | let if': _IfNode =>
-      next_current.push(_If(if'.value, body))
-    | let ifnotempty: _IfNotEmptyNode =>
-      next_current.push(_IfNotEmpty(ifnotempty.value, body))
-    | let loop: _LoopNode =>
-      next_current.push(_Loop(loop.target, loop.source, body))
+      let else_body = Array[_Part]
+      open.push((_IfElse(if'.value, if_body), else_body, false))
+      else_body
+    else
+      error // else only valid inside an if block
     end
 
-    next_current
+  fun tag _parse_elseif_stmt(
+    open: Array[((_IfNode | _IfNotEmptyNode | _LoopNode | _IfElse), Array[_Part], Bool)],
+    else_if: _ElseIfNode
+  ): Array[_Part]? =>
+    (let stmt, let if_body, _) = open.pop()?
+    match stmt
+    | let if': _IfNode =>
+      let else_body = Array[_Part]
+      open.push((_IfElse(if'.value, if_body), else_body, true))
+      let else_if_body = Array[_Part]
+      open.push((_IfNode(else_if.value), else_if_body, false))
+      else_if_body
+    else
+      error // elseif only valid inside an if block
+    end
 
   fun render(values: TemplateValues box): String? =>
     """
@@ -237,6 +316,11 @@ class val Template
         try
           values._lookup(if'.value)?
           result = result + _render_parts(if'.body, values)?
+        else
+          match if'.else_body
+          | let eb: Array[_Part] box =>
+            result = result + _render_parts(eb, values)?
+          end
         end
       | let ifnotempty: _IfNotEmpty box =>
         if values._lookup(ifnotempty.value)?.values().has_next() then
