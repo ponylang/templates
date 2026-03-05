@@ -6,6 +6,10 @@ Each subdirectory is a self-contained Pony program demonstrating a different par
 
 Parses a template with a single placeholder, binds a value, and renders the result. Demonstrates the core workflow: `Template.parse()`, `TemplateValues`, and `Template.render()`. Start here if you're new to the library.
 
+## [default-values-example](default-values-example/)
+
+Uses `| default("...")` to provide fallback text when variables are missing. Shows the three cases: all values provided (defaults ignored), no values (defaults used), and partial values (mix of actual and default).
+
 ## [conditionals-example](conditionals-example/)
 
 Shows how to use `if`/`else`, `if`/`elseif`/`else`, and `ifnot` blocks to conditionally include content based on whether values are present or absent. Demonstrates simple two-branch conditionals, chained multi-branch selection, negated conditionals, and sequence truthiness (guarding a loop with `if` so it only renders when items are present).

@@ -120,6 +120,23 @@ actor \nodoc\ Main is TestList
     test(_TestRenderInheritanceBlockWithVariables)
     test(_TestRenderBlocksWithoutExtends)
 
+    // Default value parser tests
+    test(Property1UnitTest[String](_PropValidPropDefaultParsesToPropNode))
+    test(_TestParserDefaultNodeFields)
+    test(_TestParserDefaultInCall)
+    test(_TestParserDefaultNotInControlFlow)
+
+    // Default value render tests
+    test(Property1UnitTest[(String, String)](_PropDefaultWhenMissing))
+    test(Property1UnitTest[(String, String, String)](_PropDefaultWhenPresent))
+    test(_TestRenderDefaultBasic)
+    test(_TestRenderDefaultWithDottedProp)
+    test(_TestRenderDefaultInCall)
+    test(_TestRenderDefaultInsideLoop)
+    test(_TestRenderDefaultInsideIf)
+    test(_TestCallArgMissingNoDefault)
+    test(_TestRenderDefaultWithBraces)
+
     // from_file test (Step 8)
     test(_TestFromFile)
 
@@ -288,6 +305,40 @@ primitive \nodoc\ _Generators
     """
     valid_name().map[String]({(name) => "block " + name })
 
+  fun default_value_string(): Generator[String] =>
+    """
+    Generates printable ASCII strings excluding `"`, length 0-30, for use
+    as default values in `| default("...")`. Braces are allowed because the
+    parser uses quote-aware delimiter scanning.
+    """
+    // Printable ASCII: space (0x20) through ~ (0x7E), excluding " (0x22)
+    let chars: String val =
+      " !#$%&'()*+,-./0123456789:;<=>?@"
+      + "ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`"
+      + "abcdefghijklmnopqrstuvwxyz{|}~"
+    Generator[String](
+      object is GenObj[String]
+        fun generate(rnd: Randomness): String^ =>
+          let len = rnd.usize(0, 30)
+          let s = recover iso String(len) end
+          var i: USize = 0
+          while i < len do
+            try s.push(chars(rnd.usize(0, chars.size() - 1))?) end
+            i = i + 1
+          end
+          consume s
+      end)
+
+  fun valid_prop_default_stmt(): Generator[String] =>
+    """
+    Generates `prop | default("value")` — a property with a default value.
+    """
+    Generators.map2[String, String, String](
+      valid_prop_stmt(), default_value_string(),
+      {(prop, default_val) =>
+        prop + " | default(\"" + default_val + "\")"
+      })
+
   fun invalid_stmt(): Generator[box->String] =>
     """
     Generates invalid statement strings, one per distinct failure mode.
@@ -306,6 +357,10 @@ primitive \nodoc\ _Generators
       "end."       // trailing dot after end
       "include \"\"" // empty include name
       "include \""   // unclosed quote
+      "foo | "          // incomplete default
+      "foo | default"   // missing parens
+      "foo | default()" // missing quotes
+      "foo | default(x)" // unquoted value
     ])
 
   fun literal_text(): Generator[String] =>
@@ -2020,6 +2075,321 @@ class \nodoc\ iso _TestRenderBlocksWithoutExtends is UnitTest
       "before{{ block slot }}DEFAULT{{ end }}after")?
     h.assert_eq[String](
       "beforeDEFAULTafter", template.render(TemplateValues)?)
+
+
+// ---------------------------------------------------------------------------
+// Default value parser tests
+// ---------------------------------------------------------------------------
+
+class \nodoc\ iso _PropValidPropDefaultParsesToPropNode is Property1[String]
+  fun name(): String =>
+    "Parser: valid prop default parses to _PropNode"
+
+  fun gen(): Generator[String] =>
+    _Generators.valid_prop_default_stmt()
+
+  fun ref property(stmt: String, h: PropertyHelper) ? =>
+    let node = _StmtParser.parse(stmt)? as _PropNode
+    node.default_value as String
+
+
+class \nodoc\ iso _TestParserDefaultNodeFields is UnitTest
+  fun name(): String => "Parser: default value node field correctness"
+
+  fun apply(h: TestHelper)? =>
+    // name | default("hello") → _PropNode with default_value = "hello"
+    match _StmtParser.parse("name | default(\"hello\")")?
+    | let p: _PropNode =>
+      h.assert_eq[String]("name", p.name)
+      h.assert_eq[USize](0, p.props.size())
+      h.assert_eq[String]("hello", p.default_value as String)
+    else h.fail("expected _PropNode"); error
+    end
+
+    // a.b | default("x") → dotted prop with default
+    match _StmtParser.parse("a.b | default(\"x\")")?
+    | let p: _PropNode =>
+      h.assert_eq[String]("a", p.name)
+      h.assert_eq[USize](1, p.props.size())
+      h.assert_eq[String]("b", p.props(0)?)
+      h.assert_eq[String]("x", p.default_value as String)
+    else h.fail("expected _PropNode with dotted prop"); error
+    end
+
+    // a | default("") → empty default
+    match _StmtParser.parse("a | default(\"\")")?
+    | let p: _PropNode =>
+      h.assert_eq[String]("a", p.name)
+      h.assert_eq[String]("", p.default_value as String)
+    else h.fail("expected _PropNode with empty default"); error
+    end
+
+    // Plain "foo" → no default (default_value is None)
+    match _StmtParser.parse("foo")?
+    | let p: _PropNode =>
+      h.assert_eq[String]("foo", p.name)
+      match p.default_value
+      | let _: None => None
+      else h.fail("expected None default_value for plain prop"); error
+      end
+    else h.fail("expected _PropNode"); error
+    end
+
+
+class \nodoc\ iso _TestParserDefaultInCall is UnitTest
+  fun name(): String => "Parser: default value inside function call"
+
+  fun apply(h: TestHelper)? =>
+    // fn(name | default("x")) → _CallNode with defaulted arg
+    let ctx = TemplateContext(
+      recover
+        let functions = Map[String, {(String): String}]
+        functions("fn") = {(s) => s}
+        functions
+      end
+    )
+
+    match _StmtParser.parse("fn(name | default(\"x\"))")?
+    | let c: _CallNode =>
+      h.assert_eq[String]("fn", c.name)
+      h.assert_eq[String]("name", c.arg.name)
+      h.assert_eq[String]("x", c.arg.default_value as String)
+    else h.fail("expected _CallNode"); error
+    end
+
+    // fn(name) → still works, no default
+    match _StmtParser.parse("fn(name)")?
+    | let c: _CallNode =>
+      h.assert_eq[String]("fn", c.name)
+      h.assert_eq[String]("name", c.arg.name)
+      match c.arg.default_value
+      | let _: None => None
+      else h.fail("expected None default for plain call arg"); error
+      end
+    else h.fail("expected _CallNode"); error
+    end
+
+
+class \nodoc\ iso _TestParserDefaultNotInControlFlow is UnitTest
+  fun name(): String =>
+    "Parser: default value not allowed in control flow"
+
+  fun apply(h: TestHelper) =>
+    // if name | default("x") → should fail
+    h.assert_error({() ? =>
+      _StmtParser.parse("if name | default(\"x\")")?
+    })
+
+    // ifnot name | default("x") → should fail
+    h.assert_error({() ? =>
+      _StmtParser.parse("ifnot name | default(\"x\")")?
+    })
+
+    // for x in items | default("x") → should fail
+    h.assert_error({() ? =>
+      _StmtParser.parse("for x in items | default(\"x\")")?
+    })
+
+    // elseif name | default("x") → should fail
+    h.assert_error({() ? =>
+      _StmtParser.parse("elseif name | default(\"x\")")?
+    })
+
+
+// ---------------------------------------------------------------------------
+// Default value render tests
+// ---------------------------------------------------------------------------
+
+class \nodoc\ iso _PropDefaultWhenMissing
+  is Property1[(String, String)]
+  fun name(): String =>
+    "Render: missing variable renders default value"
+
+  fun gen(): Generator[(String, String)] =>
+    Generators.zip2[String, String](
+      _Generators.valid_name(),
+      _Generators.default_value_string())
+
+  fun ref property(sample: (String, String), h: PropertyHelper) ? =>
+    (let n, let default_val) = sample
+    let source: String val =
+      "{{ " + n + " | default(\"" + default_val + "\") }}"
+    let template = Template.parse(source)?
+    h.assert_eq[String](default_val, template.render(TemplateValues)?)
+
+
+class \nodoc\ iso _PropDefaultWhenPresent
+  is Property1[(String, String, String)]
+  fun name(): String =>
+    "Render: present variable ignores default value"
+
+  fun gen(): Generator[(String, String, String)] =>
+    Generators.zip3[String, String, String](
+      _Generators.valid_name(),
+      _Generators.template_value_string(),
+      _Generators.default_value_string())
+
+  fun ref property(
+    sample: (String, String, String),
+    h: PropertyHelper)
+  ? =>
+    (let n, let actual_val, let default_val) = sample
+    let source: String val =
+      "{{ " + n + " | default(\"" + default_val + "\") }}"
+    let template = Template.parse(source)?
+    let values = TemplateValues
+    values(n) = actual_val
+    h.assert_eq[String](actual_val, template.render(values)?)
+
+
+class \nodoc\ iso _TestRenderDefaultBasic is UnitTest
+  fun name(): String => "Render: default value basic cases"
+
+  fun apply(h: TestHelper)? =>
+    // Variable present → actual value, default ignored
+    let t1 = Template.parse("{{ name | default(\"fallback\") }}")?
+    let v1 = TemplateValues
+    v1("name") = "Alice"
+    h.assert_eq[String]("Alice", t1.render(v1)?)
+
+    // Variable missing → default used
+    h.assert_eq[String]("fallback", t1.render(TemplateValues)?)
+
+    // Empty default string
+    let t2 = Template.parse("{{ name | default(\"\") }}")?
+    h.assert_eq[String]("", t2.render(TemplateValues)?)
+
+
+class \nodoc\ iso _TestRenderDefaultWithDottedProp is UnitTest
+  fun name(): String =>
+    "Render: default value with dotted property"
+
+  fun apply(h: TestHelper)? =>
+    let template = Template.parse(
+      "{{ user.name | default(\"anon\") }}")?
+
+    // Dotted prop present → actual value
+    let v1 = TemplateValues
+    let user_props = Map[String, TemplateValue]
+    user_props("name") = TemplateValue("Alice")
+    v1("user") = TemplateValue("u", user_props)
+    h.assert_eq[String]("Alice", template.render(v1)?)
+
+    // Top-level name missing → default
+    h.assert_eq[String]("anon", template.render(TemplateValues)?)
+
+    // Top-level present but nested prop missing → default
+    let v2 = TemplateValues
+    v2("user") = TemplateValue("u")
+    h.assert_eq[String]("anon", template.render(v2)?)
+
+
+class \nodoc\ iso _TestRenderDefaultInCall is UnitTest
+  fun name(): String =>
+    "Render: default value in function call argument"
+
+  fun apply(h: TestHelper)? =>
+    let ctx = TemplateContext(
+      recover
+        let functions = Map[String, {(String): String}]
+        functions("upper") = {(s) =>
+          let out = s.clone()
+          out.upper_in_place()
+          consume out
+        }
+        functions
+      end
+    )
+
+    let template = Template.parse(
+      "{{ upper(name | default(\"anon\")) }}", ctx)?
+
+    // Variable present → function applied to actual value
+    let v1 = TemplateValues
+    v1("name") = "alice"
+    h.assert_eq[String]("ALICE", template.render(v1)?)
+
+    // Variable missing → function applied to default
+    h.assert_eq[String]("ANON", template.render(TemplateValues)?)
+
+
+class \nodoc\ iso _TestRenderDefaultInsideLoop is UnitTest
+  fun name(): String => "Render: default value inside loop body"
+
+  fun apply(h: TestHelper)? =>
+    let values = TemplateValues
+
+    let item1_props = Map[String, TemplateValue]
+    item1_props("label") = TemplateValue("tagged")
+    let item2_props = Map[String, TemplateValue]
+
+    values("items") = TemplateValue(
+      [TemplateValue("A", item1_props)
+       TemplateValue("B", item2_props)])
+
+    let template = Template.parse(
+      "{{ for x in items }}" +
+      "{{ x.label | default(\"none\") }}," +
+      "{{ end }}")?
+    h.assert_eq[String]("tagged,none,", template.render(values)?)
+
+
+class \nodoc\ iso _TestRenderDefaultInsideIf is UnitTest
+  fun name(): String =>
+    "Render: default value in body of conditional"
+
+  fun apply(h: TestHelper)? =>
+    let template = Template.parse(
+      "{{ if show }}{{ title | default(\"Untitled\") }}{{ end }}")?
+
+    // show present, title present
+    let v1 = TemplateValues
+    v1("show") = "yes"
+    v1("title") = "My Page"
+    h.assert_eq[String]("My Page", template.render(v1)?)
+
+    // show present, title missing → default used
+    let v2 = TemplateValues
+    v2("show") = "yes"
+    h.assert_eq[String]("Untitled", template.render(v2)?)
+
+    // show absent → body not rendered at all
+    h.assert_eq[String]("", template.render(TemplateValues)?)
+
+
+class \nodoc\ iso _TestCallArgMissingNoDefault is UnitTest
+  fun name(): String =>
+    "Call: missing argument without default still errors"
+
+  fun apply(h: TestHelper) =>
+    let ctx = TemplateContext(
+      recover
+        let functions = Map[String, {(String): String}]
+        functions("f") = {(s) => s}
+        functions
+      end
+    )
+    h.assert_error({() ? =>
+      let template = Template.parse("{{ f(missing) }}", ctx)?
+      template.render(TemplateValues)?
+    })
+
+
+class \nodoc\ iso _TestRenderDefaultWithBraces is UnitTest
+  fun name(): String =>
+    "Render: default value containing braces"
+
+  fun apply(h: TestHelper) ? =>
+    let values = TemplateValues
+
+    h.assert_eq[String]("a}b",
+      Template.parse("{{ x | default(\"a}b\") }}")?.render(values)?)
+    h.assert_eq[String]("a}}b",
+      Template.parse("{{ x | default(\"a}}b\") }}")?.render(values)?)
+    h.assert_eq[String]("a{b",
+      Template.parse("{{ x | default(\"a{b\") }}")?.render(values)?)
+    h.assert_eq[String]("a{{b",
+      Template.parse("{{ x | default(\"a{{b\") }}")?.render(values)?)
 
 
 // ---------------------------------------------------------------------------
