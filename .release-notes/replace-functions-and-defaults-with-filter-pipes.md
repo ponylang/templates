@@ -1,6 +1,6 @@
-## Replace function calls and default values with unified filter pipes
+## Replace function calls with filter pipes
 
-Function calls (`{{ fn(arg) }}`) and the `| default("...")` syntax have been replaced by a unified filter/pipe system. Values are now transformed by piping them through one or more filters: `{{ value | filter1 | filter2 }}`.
+Function calls (`{{ fn(arg) }}`) have been replaced by a filter/pipe system. Values are now transformed by piping them through one or more filters: `{{ value | filter1 | filter2 }}`.
 
 Six built-in filters are available in all templates without registration:
 
@@ -11,7 +11,7 @@ Six built-in filters are available in all templates without registration:
 - `default("fallback")` — use fallback when the value is empty or missing
 - `replace("old", "new")` — replace all occurrences
 
-Before (function call):
+Before:
 
 ```pony
 let ctx = TemplateContext(
@@ -29,20 +29,14 @@ let ctx = TemplateContext(
 let t = Template.parse("{{ upper(name) }}", ctx)?
 ```
 
-After (pipe filter):
+After:
 
 ```pony
 // upper is built-in — no registration needed
 let t = Template.parse("{{ name | upper }}")?
 ```
 
-Before (default inside function call):
-
-```pony
-Template.parse("{{ upper(name | default(\"anon\")) }}", ctx)?
-```
-
-After (chained filters):
+Filters can be chained left-to-right and accept string literal or variable arguments:
 
 ```pony
 Template.parse("{{ name | default(\"anon\") | upper }}")?
@@ -76,6 +70,4 @@ let ctx = TemplateContext(
 )
 ```
 
-Filter arguments can be string literals (`"hello"`) or template variables (`varname`). Filters are validated at parse time — unknown filter names and arity mismatches produce parse errors rather than runtime failures.
-
-Semantic change: the `default` filter triggers on empty strings, not just missing variables. A variable bound to `""` now renders the fallback value.
+Filters are validated at parse time — unknown filter names and arity mismatches produce parse errors rather than runtime failures.
