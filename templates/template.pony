@@ -29,6 +29,11 @@ blocks. Supported block types:
   their default content from the base. Multi-level inheritance is supported.
   Content outside `{{ block }}` definitions in a child template is silently
   ignored. Circular extends chains are detected at parse time.
+* **Whitespace trimming**: `{{-` strips trailing whitespace from the preceding
+  literal, `-}}` strips leading whitespace from the following literal. Either
+  or both can be used independently: `{{- x -}}`. Whitespace includes spaces,
+  tabs, and newlines. Useful for generating indentation-sensitive output like
+  YAML without unwanted blank lines from control flow tags.
 """
 
 use "collections"
@@ -245,6 +250,7 @@ class val Template
     var current_parts = parts
     var open: Array[((_IfNode | _IfNotNode | _LoopNode | _IfElse | _BlockNode), Array[_Part], Bool)] = []
     var first_stmt: Bool = true
+    var trim_next_literal: Bool = false
     var prev_end: ISize = 0
     while prev_end < source.size().isize() do
       let start_pos =
@@ -253,12 +259,36 @@ class val Template
       let end_pos =
         try _find_close_delim(source, start_pos + 2)?
         else break end
-      if start_pos != prev_end then
-        let literal = source.substring(prev_end.isize(), start_pos)
-        current_parts.push((_Literal, consume literal))
-      end
 
-      let stmt_source: String = source.substring(start_pos + 2, end_pos)
+      // Detect {{- (left trim) and -}} (right trim)
+      let left_trim =
+        try source((start_pos + 2).usize())? == '-'
+        else false
+        end
+      let stmt_start: ISize =
+        if left_trim then start_pos + 3 else start_pos + 2 end
+      let right_trim =
+        try
+          (end_pos > stmt_start) and (source((end_pos - 1).usize())? == '-')
+        else false
+        end
+      let stmt_end: ISize =
+        if right_trim then end_pos - 1 else end_pos end
+
+      if start_pos != prev_end then
+        var literal = source.substring(prev_end.isize(), start_pos)
+        if trim_next_literal then literal.lstrip() end
+        if left_trim then literal.rstrip() end
+        if literal.size() > 0 then
+          current_parts.push((_Literal, consume literal))
+        end
+      else
+        // No literal between tags, but reset trim_next_literal below
+        None
+      end
+      trim_next_literal = right_trim
+
+      let stmt_source: String = source.substring(stmt_start, stmt_end)
       match _StmtParser.parse(stmt_source)?
       | _EndNode => current_parts = _parse_end(open, parts)?
       | _ElseNode => current_parts = _parse_else(open)?
@@ -302,7 +332,11 @@ class val Template
     end
 
     if prev_end < source.size().isize() then
-      parts.push((_Literal, source.substring(prev_end.isize())))
+      var trailing = source.substring(prev_end.isize())
+      if trim_next_literal then trailing.lstrip() end
+      if trailing.size() > 0 then
+        parts.push((_Literal, consume trailing))
+      end
     end
 
     if open.size() > 0 then error end
@@ -428,7 +462,20 @@ class val Template
       try _find_close_delim(source, start_pos + 2)?
       else return None
       end
-    let stmt_source: String val = source.substring(start_pos + 2, end_pos)
+    let left_trim =
+      try source((start_pos + 2).usize())? == '-'
+      else false
+      end
+    let stmt_start: ISize =
+      if left_trim then start_pos + 3 else start_pos + 2 end
+    let right_trim =
+      try
+        (end_pos > stmt_start) and (source((end_pos - 1).usize())? == '-')
+      else false
+      end
+    let stmt_end: ISize =
+      if right_trim then end_pos - 1 else end_pos end
+    let stmt_source: String val = source.substring(stmt_start, stmt_end)
     match _StmtParser.parse(stmt_source)?
     | let ext: _ExtendsNode => ext.name
     else None

@@ -58,3 +58,8 @@ As templates gets used in more projects, we expect to find and fix bugs. We also
   `TemplateContext`. Partials share the same variable scope as the surrounding
   template and can contain any block type. Circular includes are detected at
   parse time.
+* Whitespace trimming: `{{- x }}` strips trailing whitespace from the
+  preceding literal, `{{ x -}}` strips leading whitespace from the following
+  literal, `{{- x -}}` strips both. Useful for generating
+  indentation-sensitive output (YAML, Python, Pony) without unwanted blank
+  lines from control flow tags.
