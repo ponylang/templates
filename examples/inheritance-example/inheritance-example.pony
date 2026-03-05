@@ -11,8 +11,7 @@ actor Main
   new create(env: Env) =>
     // The base layout is registered as a partial. It defines blocks with
     // default content that child templates can override.
-    let ctx = TemplateContext(
-      recover Map[String, {(String): String}] end,
+    let ctx = TemplateContext(where partials' =
       recover val
         let p = Map[String, String]
         p("base") =

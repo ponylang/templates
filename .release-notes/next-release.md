@@ -59,8 +59,7 @@ let t = Template.parse(
 Templates can now reuse shared fragments via `{{ include "name" }}`. Partials are raw template strings registered in `TemplateContext` and inlined at parse time. They share the calling template's variable scope and can contain any block type (variables, loops, conditionals). Circular includes are detected at parse time.
 
 ```pony
-let ctx = TemplateContext(
-  recover Map[String, {(String): String}] end,
+let ctx = TemplateContext(where partials' =
   recover val
     let p = Map[String, String]
     p("header") = "=== {{ title }} ==="
@@ -80,8 +79,7 @@ Partial names may contain letters, digits, underscores, and hyphens (`[a-zA-Z0-9
 Templates can now extend a base layout and override named blocks. A base template defines `{{ block name }}...{{ end }}` sections with default content. A child template declares `{{ extends "base" }}` as its first statement and overrides specific blocks — blocks not overridden render their defaults from the base.
 
 ```pony
-let ctx = TemplateContext(
-  recover Map[String, {(String): String}] end,
+let ctx = TemplateContext(where partials' =
   recover val
     let p = Map[String, String]
     p("base") =
@@ -117,15 +115,15 @@ v("name") = "Alice"
 t.render(v)?
 ```
 
-Defaults work with dotted properties and function call arguments:
+Defaults work with dotted properties and can be chained with other filters:
 
 ```pony
 // Dotted property with default
 Template.parse("{{ user.name | default(\"anon\") }}")?
 
-// Function argument with default
-Template.parse("{{ upper(name | default(\"anon\")) }}", ctx)?
+// Default chained with upper
+Template.parse("{{ name | default(\"anon\") | upper }}")?
 ```
 
-Defaults are not allowed in control flow conditions (`if`, `ifnot`, `elseif`, `for ... in`) — a default would make the condition always truthy, defeating its purpose.
+Defaults are not allowed in control flow conditions (`if`, `ifnot`, `elseif`, `for ... in`) — pipes are only valid in expression positions.
 

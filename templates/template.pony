@@ -12,16 +12,16 @@ blocks. Supported block types:
   the variable is absent or is an empty sequence; supports `{{ else }}`
   and `{{ elseif }}`
 * **Loops**: `{{ for item in items }}...{{ end }}`
-* **Function calls**: `{{ fn(arg) }}` using functions registered via
-  `TemplateContext`
+* **Filters**: `{{ name | upper }}` pipes a value through one or more
+  filters. Filters are chained left-to-right:
+  `{{ name | trim | upper | default("ANON") }}`. Six built-in filters are
+  available without registration: `upper`, `lower`, `trim`, `capitalize`,
+  `default("fallback")`, and `replace("old", "new")`. Custom filters can
+  be registered via `TemplateContext`. Filter arguments can be string
+  literals (`"hello"`) or template variables (`varname`).
 * **Includes**: `{{ include "name" }}` inlines a named partial registered via
   `TemplateContext`. Partials share the same variable scope and can contain
   any block type. Circular includes are detected at parse time.
-* **Default values**: `{{ name | default("fallback") }}` renders the fallback
-  string when the variable is missing. The value must be double-quoted; single
-  quotes are not supported. Works with dotted properties
-  (`{{ user.name | default("anon") }}`) and function arguments
-  (`{{ upper(name | default("anon")) }}`).
 * **Template inheritance**: A child template declares
   `{{ extends "base" }}` as its first statement and overrides named blocks
   defined in the base with `{{ block name }}...{{ end }}`. Base templates are
@@ -43,13 +43,24 @@ use "valbytes"
 
 primitive _Literal
 
-class _Call
-  let f: {(String): String} val
-  let arg: _PropNode
+// A resolved filter argument: either a string literal or a property reference.
+type _ResolvedArg is (String | _PropNode)
 
-  new box create(f': {(String): String} val, arg': _PropNode) =>
-    f = f'
-    arg = arg'
+class _Pipe
+  """
+  A fully resolved pipe expression ready for rendering. The source property
+  is piped through each filter in order. Each filter has been validated at
+  parse time for existence and correct arity.
+  """
+  let source: _PropNode
+  let filters: Array[(AnyFilter, Array[_ResolvedArg] box)] box
+
+  new box create(
+    source': _PropNode,
+    filters': Array[(AnyFilter, Array[_ResolvedArg] box)] box
+  ) =>
+    source = source'
+    filters = filters'
 
 class _If
   let value: _PropNode
@@ -118,7 +129,7 @@ class _Block
     body = body'
 
 type _Part is
-  ( (_Literal, String) | _Call box | _PropNode
+  ( (_Literal, String) | _Pipe box | _PropNode
   | _If box | _IfNot box | _Loop box | _Block box )
 
 
@@ -205,21 +216,35 @@ class TemplateValues
 
 class TemplateContext
   """
-  Configuration for template parsing. Provides named functions that can be
-  called from templates via `{{ fn(arg) }}`, and named partials that can be
-  inlined via `{{ include "name" }}` or used as base templates for
+  Configuration for template parsing. Provides named filters that can be
+  applied to values via `{{ value | filter }}`, and named partials that can
+  be inlined via `{{ include "name" }}` or used as base templates for
   inheritance via `{{ extends "name" }}`.
+
+  Six built-in filters are always available: `upper`, `lower`, `trim`,
+  `capitalize`, `default`, and `replace`. User-supplied filters with the
+  same name override the built-in.
   """
-  let functions: Map[String, {(String): String}] box
+  let filters: Map[String, AnyFilter] box
   let partials: Map[String, String] box
 
   new val create(
-    functions': Map[String, {(String): String}] val
-      = recover Map[String, {(String): String}] end,
+    filters': Map[String, AnyFilter] val
+      = recover Map[String, AnyFilter] end,
     partials': Map[String, String] val
       = recover Map[String, String] end
   ) =>
-    functions = functions'
+    let merged = recover iso Map[String, AnyFilter] end
+    merged("upper") = Upper
+    merged("lower") = Lower
+    merged("trim") = Trim
+    merged("capitalize") = Capitalize
+    merged("default") = Default
+    merged("replace") = Replace
+    for (k, v) in filters'.pairs() do
+      merged(k) = v
+    end
+    filters = consume merged
     partials = partials'
 
 
@@ -295,8 +320,8 @@ class val Template
       | let else_if: _ElseIfNode =>
         current_parts = _parse_elseif_stmt(open, else_if)?
       | let prop: _PropNode => current_parts.push(prop)
-      | let call: _CallNode =>
-        current_parts.push(_Call(ctx.functions(call.name)?, call.arg))
+      | let pipe: _PipeNode =>
+        current_parts.push(_resolve_pipe(pipe, ctx)?)
       | let if': _IfNode =>
         current_parts = Array[_Part]
         open.push((if', current_parts, false))
@@ -342,6 +367,37 @@ class val Template
     if open.size() > 0 then error end
 
     consume parts
+
+  fun tag _resolve_pipe(
+    pipe: _PipeNode,
+    ctx: TemplateContext val
+  ): _Pipe box? =>
+    """
+    Resolve a parsed `_PipeNode` into a renderable `_Pipe` by looking up
+    each filter by name and validating its arity.
+    """
+    let resolved = Array[(AnyFilter, Array[_ResolvedArg] box)]
+    for step in pipe.filters.values() do
+      let filter = ctx.filters(step.name)?
+      let args = Array[_ResolvedArg]
+      for arg in step.args.values() do
+        match arg
+        | let s: String => args.push(s)
+        | let p: _PropNode => args.push(p)
+        end
+      end
+      // Validate arity
+      match filter
+      | let _: Filter val =>
+        if args.size() != 0 then error end
+      | let _: Filter2 val =>
+        if args.size() != 1 then error end
+      | let _: Filter3 val =>
+        if args.size() != 2 then error end
+      end
+      resolved.push((filter, consume args))
+    end
+    _Pipe(pipe.source, consume resolved)
 
   fun tag _parse_end(
     open: Array[((_IfNode | _IfNotNode | _LoopNode | _IfElse | _BlockNode), Array[_Part], Bool)],
@@ -547,7 +603,7 @@ class val Template
   fun tag _find_close_delim(source: String, from: ISize): ISize? =>
     """
     Find the closing `}}` delimiter starting from `from`, skipping over
-    double-quoted strings so that `}}` inside a default value like
+    double-quoted strings so that `}}` inside a filter argument like
     `default("a}}b")` is not treated as the closing delimiter.
     """
     var i = from
@@ -580,23 +636,45 @@ class val Template
     for part in parts.values() do
       match part
       | (_Literal, let value: String) => result = result + value
-      | let call: _Call box =>
-        let arg_value = try values._lookup(call.arg)?.string()?
-        else
-          match call.arg.default_value
-          | let d: String => d
-          else error
+      | let pipe: _Pipe box =>
+        var current: String = try values._lookup(pipe.source)?.string()?
+        else "" end
+        for (filter, args) in pipe.filters.values() do
+          // Resolve arguments
+          match filter
+          | let f: Filter val =>
+            current = f(current)
+          | let f: Filter2 val =>
+            let a1 = try
+              match args(0)?
+              | let s: String => s
+              | let p: _PropNode =>
+                try values._lookup(p)?.string()? else "" end
+              end
+            else "" end
+            current = f(current, a1)
+          | let f: Filter3 val =>
+            let a1 = try
+              match args(0)?
+              | let s: String => s
+              | let p: _PropNode =>
+                try values._lookup(p)?.string()? else "" end
+              end
+            else "" end
+            let a2 = try
+              match args(1)?
+              | let s: String => s
+              | let p: _PropNode =>
+                try values._lookup(p)?.string()? else "" end
+              end
+            else "" end
+            current = f(current, a1, a2)
           end
         end
-        result = result + call.f(arg_value)
+        result = result + current
       | let prop: _PropNode =>
         let substitution = try values._lookup(prop)?.string()?
-        else
-          match prop.default_value
-          | let d: String => d
-          else ""
-          end
-        end
+        else "" end
         result = result + substitution
       | let if': _If box =>
         if
