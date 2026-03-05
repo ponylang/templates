@@ -137,6 +137,20 @@ actor \nodoc\ Main is TestList
     test(_TestCallArgMissingNoDefault)
     test(_TestRenderDefaultWithBraces)
 
+    // Trim syntax tests
+    test(_TestTrimLeftOnly)
+    test(_TestTrimRightOnly)
+    test(_TestTrimBoth)
+    test(_TestTrimWithIf)
+    test(_TestTrimWithFor)
+    test(_TestTrimWithInclude)
+    test(_TestTrimWithExtends)
+    test(_TestTrimAdjacentTags)
+    test(_TestTrimAtStart)
+    test(_TestTrimAtEnd)
+    test(_TestTrimProducesEmptyLiteral)
+    test(Property1UnitTest[String](_PropTrimDeterminism))
+
     // from_file test (Step 8)
     test(_TestFromFile)
 
@@ -2390,6 +2404,190 @@ class \nodoc\ iso _TestRenderDefaultWithBraces is UnitTest
       Template.parse("{{ x | default(\"a{b\") }}")?.render(values)?)
     h.assert_eq[String]("a{{b",
       Template.parse("{{ x | default(\"a{{b\") }}")?.render(values)?)
+
+
+// ---------------------------------------------------------------------------
+// Trim syntax tests
+// ---------------------------------------------------------------------------
+
+class \nodoc\ iso _TestTrimLeftOnly is UnitTest
+  fun name(): String => "Trim: left trim strips trailing whitespace"
+
+  fun apply(h: TestHelper)? =>
+    let values = TemplateValues
+    values("x") = "world"
+    // {{- strips trailing whitespace (spaces) from preceding literal
+    h.assert_eq[String]("helloworld",
+      Template.parse("hello   {{- x }}")?.render(values)?)
+    // Strips newlines and tabs too
+    h.assert_eq[String]("helloworld",
+      Template.parse("hello\n\t {{- x }}")?.render(values)?)
+
+
+class \nodoc\ iso _TestTrimRightOnly is UnitTest
+  fun name(): String => "Trim: right trim strips leading whitespace"
+
+  fun apply(h: TestHelper)? =>
+    let values = TemplateValues
+    values("x") = "hello"
+    // -}} strips leading whitespace from following literal
+    h.assert_eq[String]("helloworld",
+      Template.parse("{{ x -}}   world")?.render(values)?)
+    // Strips newlines and tabs too
+    h.assert_eq[String]("helloworld",
+      Template.parse("{{ x -}}\n\t world")?.render(values)?)
+
+
+class \nodoc\ iso _TestTrimBoth is UnitTest
+  fun name(): String => "Trim: both trims on same tag"
+
+  fun apply(h: TestHelper)? =>
+    let values = TemplateValues
+    values("x") = "middle"
+    h.assert_eq[String]("leftmiddleright",
+      Template.parse("left   {{- x -}}   right")?.render(values)?)
+
+
+class \nodoc\ iso _TestTrimWithIf is UnitTest
+  fun name(): String => "Trim: with if/end blocks"
+
+  fun apply(h: TestHelper)? =>
+    let values = TemplateValues
+    values("show") = "yes"
+    // Trim around if/end strips all adjacent whitespace
+    h.assert_eq[String]("beforecontentafter",
+      Template.parse(
+        "before\n{{- if show -}}\ncontent\n{{- end -}}\nafter")?
+        .render(values)?)
+    // Selective trim: only right-trim on if, only left-trim on end
+    // keeps content whitespace intact
+    h.assert_eq[String]("before\ncontent\nafter",
+      Template.parse(
+        "before\n{{ if show -}}\ncontent\n{{- end }}\nafter")?
+        .render(values)?)
+
+
+class \nodoc\ iso _TestTrimWithFor is UnitTest
+  fun name(): String => "Trim: with for loop"
+
+  fun apply(h: TestHelper)? =>
+    let values = TemplateValues
+    values("items") = TemplateValue(
+      recover val
+        let s = Array[TemplateValue]
+        s.push(TemplateValue("a"))
+        s.push(TemplateValue("b"))
+        s.push(TemplateValue("c"))
+        s
+      end)
+    // Right-trim on for and left-trim on end to avoid blank lines
+    // around loop body. Each iteration produces "- <item>\n".
+    h.assert_eq[String]("items:\n- a\n- b\n- c\n",
+      Template.parse(
+        "items:\n{{ for item in items -}}\n- {{ item }}\n{{ end }}")?
+        .render(values)?)
+
+
+class \nodoc\ iso _TestTrimWithInclude is UnitTest
+  fun name(): String => "Trim: with include"
+
+  fun apply(h: TestHelper)? =>
+    let ctx = TemplateContext(
+      recover Map[String, {(String): String}] end,
+      recover val
+        let p = Map[String, String]
+        p("part") = "included"
+        p
+      end)
+    h.assert_eq[String]("beforeincludedafter",
+      Template.parse(
+        "before   {{- include \"part\" -}}   after", ctx)?
+        .render(TemplateValues)?)
+
+
+class \nodoc\ iso _TestTrimWithExtends is UnitTest
+  fun name(): String => "Trim: extends with trim markers"
+
+  fun apply(h: TestHelper)? =>
+    let ctx = TemplateContext(
+      recover Map[String, {(String): String}] end,
+      recover val
+        let p = Map[String, String]
+        p("base") = "hello {{ block content }}default{{ end }}"
+        p
+      end)
+    // Trim markers on extends should parse correctly
+    let template = Template.parse(
+      "{{- extends \"base\" -}}" +
+      "{{ block content }}world{{ end }}", ctx)?
+    let values = TemplateValues
+    h.assert_eq[String]("hello world", template.render(values)?)
+
+
+class \nodoc\ iso _TestTrimAdjacentTags is UnitTest
+  fun name(): String => "Trim: adjacent tags with no literal between"
+
+  fun apply(h: TestHelper)? =>
+    let values = TemplateValues
+    values("a") = "one"
+    values("b") = "two"
+    // -}} on first tag should strip leading whitespace from text after
+    // second tag, even though there's no literal between the two tags
+    h.assert_eq[String]("onetwotext",
+      Template.parse("{{ a -}}{{ b -}}   text")?.render(values)?)
+
+
+class \nodoc\ iso _TestTrimAtStart is UnitTest
+  fun name(): String => "Trim: left trim at start of template"
+
+  fun apply(h: TestHelper)? =>
+    let values = TemplateValues
+    values("x") = "hello"
+    // {{- at very start — no preceding literal to strip
+    h.assert_eq[String]("hello",
+      Template.parse("{{- x }}")?.render(values)?)
+
+
+class \nodoc\ iso _TestTrimAtEnd is UnitTest
+  fun name(): String => "Trim: right trim at end of template"
+
+  fun apply(h: TestHelper)? =>
+    let values = TemplateValues
+    values("x") = "hello"
+    // -}} at very end — no following literal to strip
+    h.assert_eq[String]("hello",
+      Template.parse("{{ x -}}")?.render(values)?)
+
+
+class \nodoc\ iso _TestTrimProducesEmptyLiteral is UnitTest
+  fun name(): String => "Trim: trimming produces empty literal (skipped)"
+
+  fun apply(h: TestHelper)? =>
+    let values = TemplateValues
+    values("a") = "one"
+    values("b") = "two"
+    // The spaces between tags get fully trimmed away
+    h.assert_eq[String]("onetwo",
+      Template.parse("{{ a -}}   {{- b }}")?.render(values)?)
+
+
+class \nodoc\ iso _PropTrimDeterminism is Property1[String]
+  """
+  Templates with trim markers produce the same output on repeated renders.
+  """
+  fun name(): String => "Trim: deterministic rendering"
+
+  fun gen(): Generator[String] =>
+    _Generators.valid_name()
+
+  fun property(name': String, h: PropertyHelper)? =>
+    let source: String val = "  {{- " + name' + " -}}  "
+    let template = Template.parse(source)?
+    let values = TemplateValues
+    values(name') = "val"
+    let r1 = template.render(values)?
+    let r2 = template.render(values)?
+    h.assert_eq[String](r1, r2)
 
 
 // ---------------------------------------------------------------------------

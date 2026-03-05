@@ -25,3 +25,7 @@ Registers named partials via `TemplateContext` and inlines them with `{{ include
 ## [inheritance-example](inheritance-example/)
 
 Defines a base HTML layout with `{{ block head }}` and `{{ block content }}` sections, then creates a child template that extends the base and overrides both blocks. Demonstrates template inheritance via `{{ extends "base" }}` and `{{ block name }}...{{ end }}`.
+
+## [trim-example](trim-example/)
+
+Uses `{{-` and `-}}` trim markers to strip whitespace around tags. Shows how selective trimming produces clean, indentation-sensitive output (like YAML service lists) without unwanted blank lines from control flow tags.
