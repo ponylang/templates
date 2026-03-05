@@ -13,6 +13,7 @@ primitive _TElseIf is Label fun text(): String => "ElseIf"
 primitive _TInclude is Label fun text(): String => "Include"
 primitive _TExtends is Label fun text(): String => "Extends"
 primitive _TBlock is Label fun text(): String => "Block"
+primitive _TPropDefault is Label fun text(): String => "PropDefault"
 
 primitive _EndNode
 primitive _ElseNode
@@ -26,10 +27,16 @@ class box _ElseIfNode
 class box _PropNode
   let name: String
   let props: Array[String]
+  let default_value: (String | None)
 
-  new box create(name': String, props': Array[String]) =>
+  new box create(
+    name': String,
+    props': Array[String],
+    default_value': (String | None) = None
+  ) =>
     name = name'
     props = props'
+    default_value = default_value'
 
 class box _CallNode
   let name: String
@@ -92,10 +99,22 @@ primitive _StmtParser
       let name = (alpha * (alpha / digit).many()).term(_TName)
 
       let prop = (name * (L(".") * name).many()).node(_TProp)
-      let call = (name * L("(") * expr * L(")")).node(_TCall)
-      expr() = call / prop
 
       let whitespace = (L(" ") / L("\t")).many1()
+
+      // Default value: | default("...") with printable ASCII except "
+      // Wrap prop in a Forward to prevent Sequence.concat from flattening
+      // prop's internals when used as the left operand of `*`.
+      let prop_ref = Forward
+      prop_ref() = prop
+      let default_char = R(' ', '!') / R('#', '~')
+      let default_value = (L("\"") * default_char.many() * L("\"")).term(_TName)
+      let prop_with_default =
+        (prop_ref * L("|") * L("default") * L("(") * default_value * L(")"))
+          .node(_TPropDefault).hide(whitespace)
+
+      let call = (name * L("(") * expr * L(")")).node(_TCall)
+      expr() = call / prop_with_default / prop
       let end' = L("end").term(_TEnd)
       let loop = (L("for") * name * L("in") * prop).node(_TLoop).hide(whitespace)
       let ifnot = (L("ifnot") * prop).node(_TIfNot).hide(whitespace)
@@ -136,6 +155,7 @@ primitive _StmtParser
       | let _: _TInclude => _parse_include(ast as AST)?
       | let _: _TExtends => _parse_extends(ast as AST)?
       | let _: _TBlock => _parse_block(ast as AST)?
+      | let _: _TPropDefault => _parse_prop_default(ast as AST)?
       | let prop: _TProp => _parse_prop(ast as AST)?
       else error
       end
@@ -144,7 +164,11 @@ primitive _StmtParser
 
   fun _parse_call(ast: AST): _CallNode? =>
     let name = (ast.children(0)? as Token).string()
-    let arg = _parse_prop(ast.children(2)? as AST)?
+    let arg_ast = ast.children(2)? as AST
+    let arg = match arg_ast.label()
+    | let _: _TPropDefault => _parse_prop_default(arg_ast)?
+    else _parse_prop(arg_ast)?
+    end
     _CallNode(consume name, arg)
 
   fun _parse_if(ast: AST): _IfNode? =>
@@ -182,3 +206,13 @@ primitive _StmtParser
       props.push(((child as AST).children(1)? as Token).string())
     end
     _PropNode(consume name, props)
+
+  fun _parse_prop_default(ast: AST): _PropNode? =>
+    let prop = _parse_prop(ast.children(0)? as AST)?
+    let quoted = (ast.children(4)? as Token).string()
+    let default_str = quoted.substring(1, -1)
+    let props = Array[String](prop.props.size())
+    for p in prop.props.values() do
+      props.push(p)
+    end
+    _PropNode(prop.name, props, consume default_str)

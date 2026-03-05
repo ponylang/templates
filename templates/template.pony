@@ -17,6 +17,11 @@ blocks. Supported block types:
 * **Includes**: `{{ include "name" }}` inlines a named partial registered via
   `TemplateContext`. Partials share the same variable scope and can contain
   any block type. Circular includes are detected at parse time.
+* **Default values**: `{{ name | default("fallback") }}` renders the fallback
+  string when the variable is missing. The value must be double-quoted; single
+  quotes are not supported. Works with dotted properties
+  (`{{ user.name | default("anon") }}`) and function arguments
+  (`{{ upper(name | default("anon")) }}`).
 * **Template inheritance**: A child template declares
   `{{ extends "base" }}` as its first statement and overrides named blocks
   defined in the base with `{{ block name }}...{{ end }}`. Base templates are
@@ -246,7 +251,7 @@ class val Template
         try source.find("{{" where offset = prev_end)?
         else break end
       let end_pos =
-        try source.find("}}" where offset = start_pos)?
+        try _find_close_delim(source, start_pos + 2)?
         else break end
       if start_pos != prev_end then
         let literal = source.substring(prev_end.isize(), start_pos)
@@ -420,7 +425,7 @@ class val Template
       else return None
       end
     let end_pos =
-      try source.find("}}" where offset = start_pos)?
+      try _find_close_delim(source, start_pos + 2)?
       else return None
       end
     let stmt_source: String val = source.substring(start_pos + 2, end_pos)
@@ -492,6 +497,31 @@ class val Template
     end
     result
 
+  fun tag _find_close_delim(source: String, from: ISize): ISize? =>
+    """
+    Find the closing `}}` delimiter starting from `from`, skipping over
+    double-quoted strings so that `}}` inside a default value like
+    `default("a}}b")` is not treated as the closing delimiter.
+    """
+    var i = from
+    let limit = source.size().isize()
+    while i < (limit - 1) do
+      if source(i.usize())? == '"' then
+        // Skip to closing quote
+        i = i + 1
+        while i < limit do
+          if source(i.usize())? == '"' then break end
+          i = i + 1
+        end
+      elseif
+        (source(i.usize())? == '}') and (source((i + 1).usize())? == '}')
+      then
+        return i
+      end
+      i = i + 1
+    end
+    error
+
   fun render(values: TemplateValues box): String? =>
     """
     Fills in the given values into template.
@@ -504,11 +534,22 @@ class val Template
       match part
       | (_Literal, let value: String) => result = result + value
       | let call: _Call box =>
-        let arg = values._lookup(call.arg)?
-        result = result + call.f(arg.string()?)
+        let arg_value = try values._lookup(call.arg)?.string()?
+        else
+          match call.arg.default_value
+          | let d: String => d
+          else error
+          end
+        end
+        result = result + call.f(arg_value)
       | let prop: _PropNode =>
-        // XXX make this an error instead
-        let substitution = try values._lookup(prop)?.string()? else "" end
+        let substitution = try values._lookup(prop)?.string()?
+        else
+          match prop.default_value
+          | let d: String => d
+          else ""
+          end
+        end
         result = result + substitution
       | let if': _If box =>
         if
