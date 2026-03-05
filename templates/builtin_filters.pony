@@ -78,6 +78,42 @@ primitive Default is Filter2
   fun apply(input: String, arg1: String): String =>
     if input.size() == 0 then arg1 else input end
 
+primitive Title is Filter
+  """
+  Converts the input to title case (first character of each word uppercased,
+  rest lowercased, ASCII only). Words are delimited by whitespace.
+
+  ```
+  {{ name | title }}
+  ```
+  """
+  fun apply(input: String): String =>
+    if input.size() == 0 then return "" end
+    let out = recover iso String(input.size()) end
+    var word_start = true
+    for byte in input.values() do
+      if (byte == ' ') or (byte == '\t') or (byte == '\n')
+        or (byte == '\r')
+      then
+        out.push(byte)
+        word_start = true
+      elseif word_start then
+        if (byte >= 'a') and (byte <= 'z') then
+          out.push(byte - 0x20)
+        else
+          out.push(byte)
+        end
+        word_start = false
+      else
+        if (byte >= 'A') and (byte <= 'Z') then
+          out.push(byte + 0x20)
+        else
+          out.push(byte)
+        end
+      end
+    end
+    consume out
+
 primitive Replace is Filter3
   """
   Replaces all occurrences of `arg1` with `arg2` in the input.
