@@ -164,12 +164,13 @@ The right-trim on the `for` tag strips the newline that would otherwise appear b
 
 Function calls (`{{ fn(arg) }}`) have been replaced by a filter/pipe system. Values are now transformed by piping them through one or more filters: `{{ value | filter1 | filter2 }}`.
 
-Six built-in filters are available in all templates without registration:
+Seven built-in filters are available in all templates without registration:
 
 - `upper` — uppercase
 - `lower` — lowercase
 - `trim` — strip leading/trailing whitespace
 - `capitalize` — first character upper, rest lower
+- `title` — title case each word
 - `default("fallback")` — use fallback when the value is empty or missing
 - `replace("old", "new")` — replace all occurrences
 

@@ -85,6 +85,7 @@ actor \nodoc\ Main is TestList
     test(_TestRenderPipeLower)
     test(_TestRenderPipeTrim)
     test(_TestRenderPipeCapitalize)
+    test(_TestRenderPipeTitle)
     test(_TestRenderPipeDefault)
     test(_TestRenderPipeReplace)
     test(_TestRenderPipeChain)
@@ -1637,6 +1638,43 @@ class \nodoc\ iso _TestRenderPipeCapitalize is UnitTest
     let v3 = TemplateValues
     v3("name") = "a"
     h.assert_eq[String]("A", template.render(v3)?)
+
+
+class \nodoc\ iso _TestRenderPipeTitle is UnitTest
+  fun name(): String => "Render: pipe title filter"
+
+  fun apply(h: TestHelper)? =>
+    let template = Template.parse("{{ name | title }}")?
+
+    // Basic title case
+    let v1 = TemplateValues
+    v1("name") = "hello world"
+    h.assert_eq[String]("Hello World", template.render(v1)?)
+
+    // Already uppercased letters get lowered
+    let v2 = TemplateValues
+    v2("name") = "hELLO wORLD"
+    h.assert_eq[String]("Hello World", template.render(v2)?)
+
+    // Empty string
+    let v3 = TemplateValues
+    v3("name") = ""
+    h.assert_eq[String]("", template.render(v3)?)
+
+    // Single word
+    let v4 = TemplateValues
+    v4("name") = "hello"
+    h.assert_eq[String]("Hello", template.render(v4)?)
+
+    // Multiple whitespace types
+    let v5 = TemplateValues
+    v5("name") = "hello\tworld\nnow"
+    h.assert_eq[String]("Hello\tWorld\nNow", template.render(v5)?)
+
+    // Multiple consecutive spaces preserved
+    let v6 = TemplateValues
+    v6("name") = "hello  world"
+    h.assert_eq[String]("Hello  World", template.render(v6)?)
 
 
 class \nodoc\ iso _TestRenderPipeDefault is UnitTest

@@ -22,8 +22,8 @@ primitive Repeat is Filter2
 actor Main
   new create(env: Env) =>
     // Register a custom filter via TemplateContext.
-    // Built-in filters (upper, lower, trim, capitalize, default, replace)
-    // are always available without registration.
+    // Built-in filters (upper, lower, trim, capitalize, title, default,
+    // replace) are always available without registration.
     let ctx = TemplateContext(
       recover val
         let filters = Map[String, AnyFilter]
@@ -49,6 +49,15 @@ actor Main
       v2("greeting") = "  hello world  "
       env.out.print(t2.render(v2)?)
       // Output: Greeting: Hello world
+    end
+
+    // Title case: capitalize the first letter of each word
+    try
+      let t = Template.parse("{{ name | title }}", ctx)?
+      let v = TemplateValues
+      v("name") = "hello world"
+      env.out.print(t.render(v)?)
+      // Output: Hello World
     end
 
     // Default filter: fallback when a variable is missing

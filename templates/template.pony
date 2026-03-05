@@ -14,9 +14,9 @@ blocks. Supported block types:
 * **Loops**: `{{ for item in items }}...{{ end }}`
 * **Filters**: `{{ name | upper }}` pipes a value through one or more
   filters. Filters are chained left-to-right:
-  `{{ name | trim | upper | default("ANON") }}`. Six built-in filters are
+  `{{ name | trim | upper | default("ANON") }}`. Seven built-in filters are
   available without registration: `upper`, `lower`, `trim`, `capitalize`,
-  `default("fallback")`, and `replace("old", "new")`. Custom filters can
+  `title`, `default("fallback")`, and `replace("old", "new")`. Custom filters can
   be registered via `TemplateContext`. Filter arguments can be string
   literals (`"hello"`) or template variables (`varname`).
 * **Includes**: `{{ include "name" }}` inlines a named partial registered via
@@ -221,8 +221,8 @@ class TemplateContext
   be inlined via `{{ include "name" }}` or used as base templates for
   inheritance via `{{ extends "name" }}`.
 
-  Six built-in filters are always available: `upper`, `lower`, `trim`,
-  `capitalize`, `default`, and `replace`. User-supplied filters with the
+  Seven built-in filters are always available: `upper`, `lower`, `trim`,
+  `capitalize`, `title`, `default`, and `replace`. User-supplied filters with the
   same name override the built-in.
   """
   let filters: Map[String, AnyFilter] box
@@ -239,6 +239,7 @@ class TemplateContext
     merged("lower") = Lower
     merged("trim") = Trim
     merged("capitalize") = Capitalize
+    merged("title") = Title
     merged("default") = Default
     merged("replace") = Replace
     for (k, v) in filters'.pairs() do
