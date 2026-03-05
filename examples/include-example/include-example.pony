@@ -11,8 +11,7 @@ actor Main
   new create(env: Env) =>
     // Partials are raw template strings registered in a TemplateContext.
     // They can contain any template syntax — variables, loops, conditionals.
-    let ctx = TemplateContext(
-      recover Map[String, {(String): String}] end,
+    let ctx = TemplateContext(where partials' =
       recover val
         let p = Map[String, String]
         p("header") = "=== {{ title }} ==="

@@ -51,9 +51,11 @@ As templates gets used in more projects, we expect to find and fix bugs. We also
 * Conditional output: `{{ if spam }}Eggs{{ end }}` only adds `Eggs` to the
   output if the variable `spam` exists and, for sequences, is non-empty.
   Can also check for the presence of a property.
-* Calls: `{{ escape(var) }}` calls `escape` with argument `var` and adds
-  the function result to the output. All known functions must be passed as part
-  of a `TemplateContext` value to the template's constructor.
+* Filters: `{{ name | upper }}` pipes a value through one or more
+  filters. Filters chain left-to-right: `{{ name | trim | upper }}`.
+  Built-in filters: `upper`, `lower`, `trim`, `capitalize`,
+  `default("fallback")`, `replace("old", "new")`. Custom filters can be
+  registered via `TemplateContext`.
 * Includes: `{{ include "header" }}` inlines a named partial registered via
   `TemplateContext`. Partials share the same variable scope as the surrounding
   template and can contain any block type. Circular includes are detected at

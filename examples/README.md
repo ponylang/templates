@@ -6,17 +6,13 @@ Each subdirectory is a self-contained Pony program demonstrating a different par
 
 Parses a template with a single placeholder, binds a value, and renders the result. Demonstrates the core workflow: `Template.parse()`, `TemplateValues`, and `Template.render()`. Start here if you're new to the library.
 
-## [default-values-example](default-values-example/)
+## [filters-example](filters-example/)
 
-Uses `| default("...")` to provide fallback text when variables are missing. Shows the three cases: all values provided (defaults ignored), no values (defaults used), and partial values (mix of actual and default).
+Uses the filter/pipe system to transform values. Demonstrates built-in filters (`upper`, `trim`, `capitalize`, `default`), chaining multiple filters (`{{ greeting | trim | capitalize }}`), custom filter registration via `TemplateContext`, and filters inside loops.
 
 ## [conditionals-example](conditionals-example/)
 
 Shows how to use `if`/`else`, `if`/`elseif`/`else`, and `ifnot` blocks to conditionally include content based on whether values are present or absent. Demonstrates simple two-branch conditionals, chained multi-branch selection, negated conditionals, and sequence truthiness (guarding a loop with `if` so it only renders when items are present).
-
-## [functions-example](functions-example/)
-
-Registers a custom function via `TemplateContext` and calls it from within a template inside a `for` loop. Demonstrates how to extend templates with user-defined transformations.
 
 ## [include-example](include-example/)
 

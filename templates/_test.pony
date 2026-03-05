@@ -14,7 +14,6 @@ actor \nodoc\ Main is TestList
     test(_TemplateTest)
     test(_LoopTest)
     test(_IfTest)
-    test(_CallTest)
     test(_StmtParserTest)
 
     // TemplateValues tests (Step 3)
@@ -27,22 +26,25 @@ actor \nodoc\ Main is TestList
 
     // Parser tests (Step 4)
     test(Property1UnitTest[String](_PropValidPropParsesToPropNode))
-    test(Property1UnitTest[String](_PropValidCallParsesToCallNode))
+    test(Property1UnitTest[String](_PropValidPipeParsesToPipeNode))
     test(Property1UnitTest[String](_PropValidLoopParsesToLoopNode))
     test(Property1UnitTest[String](_PropValidIfParsesToIfNode))
     test(Property1UnitTest[String](_PropValidIfNotParsesToIfNotNode))
     test(Property1UnitTest[String](_PropValidElseIfParsesToElseIfNode))
     test(Property1UnitTest[box->String](_PropInvalidStmtErrors))
     test(_TestParserNodeFields)
+    test(_TestParserPipeNodeFields)
     test(_TestParserKeywordAmbiguity)
 
     // Template parse error tests (Step 5)
     test(_TestParseErrorUnclosedBlock)
     test(_TestParseErrorEndWithoutBlock)
-    test(_TestParseErrorUnknownFunction)
+    test(_TestParseErrorUnknownFilter)
+    test(_TestParseErrorFilterArityMismatch)
     test(_TestParseErrorMalformedStmt)
     test(_TestParseIncompleteDelimiters)
     test(_TestParseErrorElseElseIf)
+    test(_TestParserPipeNotInControlFlow)
 
     // Template render tests (Step 6)
     test(Property1UnitTest[String](_PropLiteralIdentity))
@@ -74,10 +76,25 @@ actor \nodoc\ Main is TestList
     test(_TestRenderIfElseInsideLoop)
     test(_TestRenderNestedIfElse)
 
-    // Function call tests (Step 7)
-    test(_TestCallWithNestedProp)
-    test(_TestCallArgMissing)
-    test(_TestCallMultipleFunctions)
+    // Filter pipe render tests
+    test(Property1UnitTest[String](_PropPipeBasicFilter))
+    test(Property1UnitTest[(String, String)](_PropPipeDefaultMissing))
+    test(Property1UnitTest[(String, String, String)](
+      _PropPipeDefaultPresent))
+    test(_TestRenderPipeUpper)
+    test(_TestRenderPipeLower)
+    test(_TestRenderPipeTrim)
+    test(_TestRenderPipeCapitalize)
+    test(_TestRenderPipeDefault)
+    test(_TestRenderPipeReplace)
+    test(_TestRenderPipeChain)
+    test(_TestRenderPipeDottedSource)
+    test(_TestRenderPipeVariableArg)
+    test(_TestRenderPipeInsideLoop)
+    test(_TestRenderPipeInsideIf)
+    test(_TestRenderPipeDefaultThenUpper)
+    test(_TestRenderPipeCustomFilter)
+    test(_TestRenderPipeOverrideBuiltin)
 
     // Include parser tests
     test(Property1UnitTest[String](_PropValidIncludeParsesToIncludeNode))
@@ -120,21 +137,13 @@ actor \nodoc\ Main is TestList
     test(_TestRenderInheritanceBlockWithVariables)
     test(_TestRenderBlocksWithoutExtends)
 
-    // Default value parser tests
-    test(Property1UnitTest[String](_PropValidPropDefaultParsesToPropNode))
-    test(_TestParserDefaultNodeFields)
-    test(_TestParserDefaultInCall)
-    test(_TestParserDefaultNotInControlFlow)
-
-    // Default value render tests
+    // Default value render tests (using pipe syntax)
     test(Property1UnitTest[(String, String)](_PropDefaultWhenMissing))
     test(Property1UnitTest[(String, String, String)](_PropDefaultWhenPresent))
     test(_TestRenderDefaultBasic)
     test(_TestRenderDefaultWithDottedProp)
-    test(_TestRenderDefaultInCall)
     test(_TestRenderDefaultInsideLoop)
     test(_TestRenderDefaultInsideIf)
-    test(_TestCallArgMissingNoDefault)
     test(_TestRenderDefaultWithBraces)
 
     // Trim syntax tests
@@ -241,13 +250,24 @@ primitive \nodoc\ _Generators
         end
       })
 
-  fun valid_call_stmt(): Generator[String] =>
+  fun valid_pipe_stmt(): Generator[String] =>
     """
-    Generates `name(prop)` — a function call with a property argument.
+    Generates valid pipe expressions like `prop | upper` or
+    `prop | default("val")`. Uses only built-in filter names with correct
+    arities.
     """
     Generators.map2[String, String, String](
-      valid_name(), valid_prop_stmt(),
-      {(name, prop) => name + "(" + prop + ")" })
+      valid_prop_stmt(), filter_arg_string(),
+      {(prop, arg) =>
+        let depth = prop.size() % 3
+        if depth == 0 then
+          prop + " | upper"
+        elseif depth == 1 then
+          prop + " | default(\"" + arg + "\")"
+        else
+          prop + " | trim | upper"
+        end
+      })
 
   fun valid_loop_stmt(): Generator[String] =>
     """
@@ -319,10 +339,10 @@ primitive \nodoc\ _Generators
     """
     valid_name().map[String]({(name) => "block " + name })
 
-  fun default_value_string(): Generator[String] =>
+  fun filter_arg_string(): Generator[String] =>
     """
     Generates printable ASCII strings excluding `"`, length 0-30, for use
-    as default values in `| default("...")`. Braces are allowed because the
+    as filter arguments in `| filter("...")`. Braces are allowed because the
     parser uses quote-aware delimiter scanning.
     """
     // Printable ASCII: space (0x20) through ~ (0x7E), excluding " (0x22)
@@ -343,16 +363,6 @@ primitive \nodoc\ _Generators
           consume s
       end)
 
-  fun valid_prop_default_stmt(): Generator[String] =>
-    """
-    Generates `prop | default("value")` — a property with a default value.
-    """
-    Generators.map2[String, String, String](
-      valid_prop_stmt(), default_value_string(),
-      {(prop, default_val) =>
-        prop + " | default(\"" + default_val + "\")"
-      })
-
   fun invalid_stmt(): Generator[box->String] =>
     """
     Generates invalid statement strings, one per distinct failure mode.
@@ -361,8 +371,6 @@ primitive \nodoc\ _Generators
       ""           // empty
       "3abc"       // starts with digit
       "foo@bar"    // invalid character
-      "foo("       // unclosed paren
-      "foo()"      // empty call arg
       "for x"      // incomplete loop (no "in")
       "for x in"   // loop with no source
       "foo..bar"   // double dot
@@ -371,10 +379,8 @@ primitive \nodoc\ _Generators
       "end."       // trailing dot after end
       "include \"\"" // empty include name
       "include \""   // unclosed quote
-      "foo | "          // incomplete default
-      "foo | default"   // missing parens
-      "foo | default()" // missing quotes
-      "foo | default(x)" // unquoted value
+      "foo |"       // incomplete pipe
+      "foo | |"     // double pipe
     ])
 
   fun literal_text(): Generator[String] =>
@@ -463,30 +469,13 @@ class \nodoc\ iso _IfTest is UnitTest
     h.assert_eq[String]("Eggs", template.render(values)?)
 
 
-class \nodoc\ iso _CallTest is UnitTest
-  fun name(): String => "Template calls"
-
-  fun apply(h: TestHelper)? =>
-    let values = TemplateValues
-    values("x") = "foo"
-    let ctx = TemplateContext(
-      recover
-        let functions = Map[String, {(String): String}]
-        functions("double") = {(x) => x + x}
-        functions
-      end
-    )
-    let template = Template.parse("{{ double(x) }}", ctx)?
-    h.assert_eq[String]("foofoo", template.render(values)?)
-
-
 class \nodoc\ iso _StmtParserTest is UnitTest
   fun name(): String => "Template statement parser"
 
   fun apply(h: TestHelper) =>
     h.assert_no_error({()? => _StmtParser.parse("end")? as _EndNode })
     h.assert_no_error(
-      {()? => _StmtParser.parse("foo(spam.eggs)")? as _CallNode })
+      {()? => _StmtParser.parse("foo | upper")? as _PipeNode })
     h.assert_no_error(
       {()? => _StmtParser.parse("ifnot spam")? as _IfNotNode })
 
@@ -605,14 +594,14 @@ class \nodoc\ iso _PropValidPropParsesToPropNode is Property1[String]
     _StmtParser.parse(stmt)? as _PropNode
 
 
-class \nodoc\ iso _PropValidCallParsesToCallNode is Property1[String]
-  fun name(): String => "Parser: valid call parses to _CallNode"
+class \nodoc\ iso _PropValidPipeParsesToPipeNode is Property1[String]
+  fun name(): String => "Parser: valid pipe parses to _PipeNode"
 
   fun gen(): Generator[String] =>
-    _Generators.valid_call_stmt()
+    _Generators.valid_pipe_stmt()
 
   fun ref property(stmt: String, h: PropertyHelper) ? =>
-    _StmtParser.parse(stmt)? as _CallNode
+    _StmtParser.parse(stmt)? as _PipeNode
 
 
 class \nodoc\ iso _PropValidLoopParsesToLoopNode is Property1[String]
@@ -695,14 +684,15 @@ class \nodoc\ iso _TestParserNodeFields is UnitTest
     else h.fail("expected _PropNode"); error
     end
 
-    // "double(x.y)" → _CallNode(name="double", arg=_PropNode("x", ["y"]))
-    match _StmtParser.parse("double(x.y)")?
-    | let c: _CallNode =>
-      h.assert_eq[String]("double", c.name)
-      h.assert_eq[String]("x", c.arg.name)
-      h.assert_eq[USize](1, c.arg.props.size())
-      h.assert_eq[String]("y", c.arg.props(0)?)
-    else h.fail("expected _CallNode"); error
+    // "foo | upper" → _PipeNode(source=_PropNode("foo"), filters=[...])
+    match _StmtParser.parse("foo | upper")?
+    | let pipe: _PipeNode =>
+      h.assert_eq[String]("foo", pipe.source.name)
+      h.assert_eq[USize](0, pipe.source.props.size())
+      h.assert_eq[USize](1, pipe.filters.size())
+      h.assert_eq[String]("upper", pipe.filters(0)?.name)
+      h.assert_eq[USize](0, pipe.filters(0)?.args.size())
+    else h.fail("expected _PipeNode"); error
     end
 
     // "for item in list.items" → _LoopNode
@@ -760,6 +750,77 @@ class \nodoc\ iso _TestParserNodeFields is UnitTest
       h.assert_eq[USize](1, ei.value.props.size())
       h.assert_eq[String]("b", ei.value.props(0)?)
     else h.fail("expected _ElseIfNode with dotted prop"); error
+    end
+
+
+class \nodoc\ iso _TestParserPipeNodeFields is UnitTest
+  fun name(): String => "Parser: pipe node field correctness"
+
+  fun apply(h: TestHelper)? =>
+    // "name | upper" → single 0-arg filter
+    match _StmtParser.parse("name | upper")?
+    | let pipe: _PipeNode =>
+      h.assert_eq[String]("name", pipe.source.name)
+      h.assert_eq[USize](1, pipe.filters.size())
+      h.assert_eq[String]("upper", pipe.filters(0)?.name)
+      h.assert_eq[USize](0, pipe.filters(0)?.args.size())
+    else h.fail("expected _PipeNode for name | upper"); error
+    end
+
+    // 'name | default("x")' → single 1-arg filter with string literal
+    match _StmtParser.parse("name | default(\"x\")")?
+    | let pipe: _PipeNode =>
+      h.assert_eq[String]("name", pipe.source.name)
+      h.assert_eq[USize](1, pipe.filters.size())
+      h.assert_eq[String]("default", pipe.filters(0)?.name)
+      h.assert_eq[USize](1, pipe.filters(0)?.args.size())
+      match pipe.filters(0)?.args(0)?
+      | let s: String => h.assert_eq[String]("x", s)
+      else h.fail("expected String arg"); error
+      end
+    else h.fail("expected _PipeNode for default"); error
+    end
+
+    // "a.b | trim | upper" → dotted source, two filters
+    match _StmtParser.parse("a.b | trim | upper")?
+    | let pipe: _PipeNode =>
+      h.assert_eq[String]("a", pipe.source.name)
+      h.assert_eq[USize](1, pipe.source.props.size())
+      h.assert_eq[String]("b", pipe.source.props(0)?)
+      h.assert_eq[USize](2, pipe.filters.size())
+      h.assert_eq[String]("trim", pipe.filters(0)?.name)
+      h.assert_eq[String]("upper", pipe.filters(1)?.name)
+    else h.fail("expected _PipeNode for chain"); error
+    end
+
+    // "name | default(fallback)" → variable arg
+    match _StmtParser.parse("name | default(fallback)")?
+    | let pipe: _PipeNode =>
+      h.assert_eq[USize](1, pipe.filters.size())
+      h.assert_eq[USize](1, pipe.filters(0)?.args.size())
+      match pipe.filters(0)?.args(0)?
+      | let p: _PropNode =>
+        h.assert_eq[String]("fallback", p.name)
+      else h.fail("expected _PropNode arg"); error
+      end
+    else h.fail("expected _PipeNode for variable arg"); error
+    end
+
+    // 'name | replace("a", "b")' → two string literal args
+    match _StmtParser.parse("name | replace(\"a\", \"b\")")?
+    | let pipe: _PipeNode =>
+      h.assert_eq[USize](1, pipe.filters.size())
+      h.assert_eq[String]("replace", pipe.filters(0)?.name)
+      h.assert_eq[USize](2, pipe.filters(0)?.args.size())
+      match pipe.filters(0)?.args(0)?
+      | let s: String => h.assert_eq[String]("a", s)
+      else h.fail("expected String arg 0"); error
+      end
+      match pipe.filters(0)?.args(1)?
+      | let s: String => h.assert_eq[String]("b", s)
+      else h.fail("expected String arg 1"); error
+      end
+    else h.fail("expected _PipeNode for replace"); error
     end
 
 
@@ -874,11 +935,31 @@ class \nodoc\ iso _TestParseErrorEndWithoutBlock is UnitTest
     })
 
 
-class \nodoc\ iso _TestParseErrorUnknownFunction is UnitTest
-  fun name(): String => "Template parse error: unknown function"
+class \nodoc\ iso _TestParseErrorUnknownFilter is UnitTest
+  fun name(): String => "Template parse error: unknown filter"
 
   fun apply(h: TestHelper) =>
-    h.assert_error({() ? => Template.parse("{{ unknown(x) }}")? })
+    h.assert_error({() ? => Template.parse("{{ x | nonexistent }}")? })
+
+
+class \nodoc\ iso _TestParseErrorFilterArityMismatch is UnitTest
+  fun name(): String => "Template parse error: filter arity mismatch"
+
+  fun apply(h: TestHelper) =>
+    // upper takes 0 args, giving it 1 should fail
+    h.assert_error({() ? =>
+      Template.parse("{{ x | upper(\"a\") }}")?
+    })
+
+    // default takes 1 arg, giving it 0 should fail
+    h.assert_error({() ? =>
+      Template.parse("{{ x | default }}")?
+    })
+
+    // replace takes 2 args, giving it 1 should fail
+    h.assert_error({() ? =>
+      Template.parse("{{ x | replace(\"a\") }}")?
+    })
 
 
 class \nodoc\ iso _TestParseErrorMalformedStmt is UnitTest
@@ -886,7 +967,6 @@ class \nodoc\ iso _TestParseErrorMalformedStmt is UnitTest
 
   fun apply(h: TestHelper) =>
     h.assert_error({() ? => Template.parse("{{ 3bad }}")? })
-    h.assert_error({() ? => Template.parse("{{ foo( }}")? })
 
 
 class \nodoc\ iso _TestParseIncompleteDelimiters is UnitTest
@@ -944,6 +1024,32 @@ class \nodoc\ iso _TestParseErrorElseElseIf is UnitTest
     // Unclosed elseif chain
     h.assert_error({() ? =>
       Template.parse("{{ if a }}A{{ elseif b }}B")?
+    })
+
+
+class \nodoc\ iso _TestParserPipeNotInControlFlow is UnitTest
+  fun name(): String =>
+    "Parser: pipe not allowed in control flow positions"
+
+  fun apply(h: TestHelper) =>
+    // if name | upper → should fail
+    h.assert_error({() ? =>
+      _StmtParser.parse("if name | upper")?
+    })
+
+    // ifnot name | upper → should fail
+    h.assert_error({() ? =>
+      _StmtParser.parse("ifnot name | upper")?
+    })
+
+    // for x in items | upper → should fail
+    h.assert_error({() ? =>
+      _StmtParser.parse("for x in items | upper")?
+    })
+
+    // elseif name | upper → should fail
+    h.assert_error({() ? =>
+      _StmtParser.parse("elseif name | upper")?
     })
 
 
@@ -1418,77 +1524,280 @@ class \nodoc\ iso _TestRenderNestedIfNotWithIf is UnitTest
 
 
 // ---------------------------------------------------------------------------
-// Function call tests (Step 7)
+// Filter pipe render tests
 // ---------------------------------------------------------------------------
 
-class \nodoc\ iso _TestCallWithNestedProp is UnitTest
-  fun name(): String => "Call: function with dotted property argument"
+class \nodoc\ iso _PropPipeBasicFilter is Property1[String]
+  fun name(): String =>
+    "Render: {{ name | upper }} always equals name.upper()"
+
+  fun gen(): Generator[String] =>
+    _Generators.template_value_string()
+
+  fun ref property(val': String, h: PropertyHelper) ? =>
+    let template = Template.parse("{{ x | upper }}")?
+    let values = TemplateValues
+    values("x") = val'
+    let expected = val'.clone()
+    expected.upper_in_place()
+    h.assert_eq[String](consume expected, template.render(values)?)
+
+
+class \nodoc\ iso _PropPipeDefaultMissing
+  is Property1[(String, String)]
+  fun name(): String =>
+    "Render: missing var with default always returns fallback"
+
+  fun gen(): Generator[(String, String)] =>
+    Generators.zip2[String, String](
+      _Generators.valid_name(),
+      _Generators.filter_arg_string())
+
+  fun ref property(sample: (String, String), h: PropertyHelper) ? =>
+    (let n, let fallback) = sample
+    let source: String val =
+      "{{ " + n + " | default(\"" + fallback + "\") }}"
+    let template = Template.parse(source)?
+    h.assert_eq[String](fallback, template.render(TemplateValues)?)
+
+
+class \nodoc\ iso _PropPipeDefaultPresent
+  is Property1[(String, String, String)]
+  fun name(): String =>
+    "Render: present var with default always returns the var"
+
+  fun gen(): Generator[(String, String, String)] =>
+    Generators.zip3[String, String, String](
+      _Generators.valid_name(),
+      _Generators.template_value_string()
+        .filter({(s: String): (String^, Bool) =>
+          // Only non-empty strings; empty would trigger the default
+          let ok = s.size() > 0
+          (consume s, ok)
+        }),
+      _Generators.filter_arg_string())
+
+  fun ref property(
+    sample: (String, String, String),
+    h: PropertyHelper)
+  ? =>
+    (let n, let actual_val, let fallback) = sample
+    let source: String val =
+      "{{ " + n + " | default(\"" + fallback + "\") }}"
+    let template = Template.parse(source)?
+    let values = TemplateValues
+    values(n) = actual_val
+    h.assert_eq[String](actual_val, template.render(values)?)
+
+
+class \nodoc\ iso _TestRenderPipeUpper is UnitTest
+  fun name(): String => "Render: pipe upper filter"
 
   fun apply(h: TestHelper)? =>
+    let template = Template.parse("{{ name | upper }}")?
+    let values = TemplateValues
+    values("name") = "hello"
+    h.assert_eq[String]("HELLO", template.render(values)?)
+
+
+class \nodoc\ iso _TestRenderPipeLower is UnitTest
+  fun name(): String => "Render: pipe lower filter"
+
+  fun apply(h: TestHelper)? =>
+    let template = Template.parse("{{ name | lower }}")?
+    let values = TemplateValues
+    values("name") = "HELLO"
+    h.assert_eq[String]("hello", template.render(values)?)
+
+
+class \nodoc\ iso _TestRenderPipeTrim is UnitTest
+  fun name(): String => "Render: pipe trim filter"
+
+  fun apply(h: TestHelper)? =>
+    let template = Template.parse("{{ name | trim }}")?
+    let values = TemplateValues
+    values("name") = "  hello  "
+    h.assert_eq[String]("hello", template.render(values)?)
+
+
+class \nodoc\ iso _TestRenderPipeCapitalize is UnitTest
+  fun name(): String => "Render: pipe capitalize filter"
+
+  fun apply(h: TestHelper)? =>
+    let template = Template.parse("{{ name | capitalize }}")?
+
+    let v1 = TemplateValues
+    v1("name") = "hello WORLD"
+    h.assert_eq[String]("Hello world", template.render(v1)?)
+
+    let v2 = TemplateValues
+    v2("name") = ""
+    h.assert_eq[String]("", template.render(v2)?)
+
+    let v3 = TemplateValues
+    v3("name") = "a"
+    h.assert_eq[String]("A", template.render(v3)?)
+
+
+class \nodoc\ iso _TestRenderPipeDefault is UnitTest
+  fun name(): String => "Render: pipe default filter"
+
+  fun apply(h: TestHelper)? =>
+    let template = Template.parse(
+      "{{ name | default(\"anon\") }}")?
+
+    // Missing → default
+    h.assert_eq[String]("anon", template.render(TemplateValues)?)
+
+    // Present → actual value
+    let values = TemplateValues
+    values("name") = "Alice"
+    h.assert_eq[String]("Alice", template.render(values)?)
+
+    // Empty string → default (empty triggers default filter)
+    let v2 = TemplateValues
+    v2("name") = ""
+    h.assert_eq[String]("anon", template.render(v2)?)
+
+
+class \nodoc\ iso _TestRenderPipeReplace is UnitTest
+  fun name(): String => "Render: pipe replace filter"
+
+  fun apply(h: TestHelper)? =>
+    let template = Template.parse(
+      "{{ msg | replace(\"world\", \"pony\") }}")?
+    let values = TemplateValues
+    values("msg") = "hello world"
+    h.assert_eq[String]("hello pony", template.render(values)?)
+
+
+class \nodoc\ iso _TestRenderPipeChain is UnitTest
+  fun name(): String => "Render: chained filters"
+
+  fun apply(h: TestHelper)? =>
+    let template = Template.parse("{{ name | trim | upper }}")?
+    let values = TemplateValues
+    values("name") = "  hello  "
+    h.assert_eq[String]("HELLO", template.render(values)?)
+
+
+class \nodoc\ iso _TestRenderPipeDottedSource is UnitTest
+  fun name(): String => "Render: pipe with dotted source"
+
+  fun apply(h: TestHelper)? =>
+    let template = Template.parse("{{ user.name | upper }}")?
     let values = TemplateValues
     let user_props = Map[String, TemplateValue]
     user_props("name") = TemplateValue("alice")
     values("user") = TemplateValue("u", user_props)
-
-    let ctx = TemplateContext(
-      recover
-        let functions = Map[String, {(String): String}]
-        functions("upper") = {(s) =>
-          let out = s.clone()
-          out.upper_in_place()
-          consume out
-        }
-        functions
-      end
-    )
-    let template = Template.parse("{{ upper(user.name) }}", ctx)?
     h.assert_eq[String]("ALICE", template.render(values)?)
 
 
-class \nodoc\ iso _TestCallArgMissing is UnitTest
-  fun name(): String => "Call: missing argument value errors"
-
-  fun apply(h: TestHelper) =>
-    let ctx = TemplateContext(
-      recover
-        let functions = Map[String, {(String): String}]
-        functions("f") = {(s) => s}
-        functions
-      end
-    )
-    h.assert_error({() ? =>
-      let template = Template.parse("{{ f(missing) }}", ctx)?
-      template.render(TemplateValues)?
-    })
-
-
-class \nodoc\ iso _TestCallMultipleFunctions is UnitTest
-  fun name(): String => "Call: multiple function calls in template"
+class \nodoc\ iso _TestRenderPipeVariableArg is UnitTest
+  fun name(): String => "Render: pipe filter with variable argument"
 
   fun apply(h: TestHelper)? =>
+    let template = Template.parse("{{ name | default(fallback) }}")?
     let values = TemplateValues
-    values("x") = "ab"
-    values("y") = "cd"
+    values("fallback") = "anon"
 
+    // name missing → resolve fallback variable → "anon"
+    h.assert_eq[String]("anon", template.render(values)?)
+
+    // name present → actual value
+    values("name") = "Alice"
+    h.assert_eq[String]("Alice", template.render(values)?)
+
+
+class \nodoc\ iso _TestRenderPipeInsideLoop is UnitTest
+  fun name(): String => "Render: pipe inside for loop"
+
+  fun apply(h: TestHelper)? =>
+    let template = Template.parse(
+      "{{ for name in names }}{{ name | upper }} {{ end }}")?
+    let values = TemplateValues
+    values("names") = TemplateValue(
+      [TemplateValue("alice"); TemplateValue("bob")])
+    h.assert_eq[String]("ALICE BOB ", template.render(values)?)
+
+
+class \nodoc\ iso _TestRenderPipeInsideIf is UnitTest
+  fun name(): String => "Render: pipe inside conditional"
+
+  fun apply(h: TestHelper)? =>
+    let template = Template.parse(
+      "{{ if show }}{{ name | upper }}{{ end }}")?
+
+    let v1 = TemplateValues
+    v1("show") = "yes"
+    v1("name") = "alice"
+    h.assert_eq[String]("ALICE", template.render(v1)?)
+
+    h.assert_eq[String]("", template.render(TemplateValues)?)
+
+
+class \nodoc\ iso _TestRenderPipeDefaultThenUpper is UnitTest
+  fun name(): String =>
+    "Render: default then upper (migration from old syntax)"
+
+  fun apply(h: TestHelper)? =>
+    // Old: {{ upper(name | default("anon")) }}
+    // New: {{ name | default("anon") | upper }}
+    let template = Template.parse(
+      "{{ name | default(\"anon\") | upper }}")?
+
+    // Missing → default → upper
+    h.assert_eq[String]("ANON", template.render(TemplateValues)?)
+
+    // Present → actual → upper
+    let values = TemplateValues
+    values("name") = "alice"
+    h.assert_eq[String]("ALICE", template.render(values)?)
+
+
+class \nodoc\ iso _TestRenderPipeCustomFilter is UnitTest
+  fun name(): String => "Render: custom filter via TemplateContext"
+
+  fun apply(h: TestHelper)? =>
     let ctx = TemplateContext(
-      recover
-        let functions = Map[String, {(String): String}]
-        functions("double") = {(s) => s + s}
-        functions("rev") = {(s) =>
-          let out = recover iso String(s.size()) end
-          var i = s.size()
-          while i > 0 do
-            i = i - 1
-            try out.push(s(i)?) end
+      recover val
+        let filters = Map[String, AnyFilter]
+        filters("double") = recover val
+          object is Filter
+            fun apply(input: String): String =>
+              input + input
           end
-          consume out
-        }
-        functions
+        end
+        filters
       end
     )
-    let template = Template.parse(
-      "{{ double(x) }}-{{ rev(y) }}", ctx)?
-    h.assert_eq[String]("abab-dc", template.render(values)?)
+    let template = Template.parse("{{ x | double }}", ctx)?
+    let values = TemplateValues
+    values("x") = "ab"
+    h.assert_eq[String]("abab", template.render(values)?)
+
+
+class \nodoc\ iso _TestRenderPipeOverrideBuiltin is UnitTest
+  fun name(): String => "Render: override built-in filter"
+
+  fun apply(h: TestHelper)? =>
+    // Override "upper" with a filter that returns "OVERRIDDEN"
+    let ctx = TemplateContext(
+      recover val
+        let filters = Map[String, AnyFilter]
+        filters("upper") = recover val
+          object is Filter
+            fun apply(input: String): String =>
+              "OVERRIDDEN"
+          end
+        end
+        filters
+      end
+    )
+    let template = Template.parse("{{ x | upper }}", ctx)?
+    let values = TemplateValues
+    values("x") = "hello"
+    h.assert_eq[String]("OVERRIDDEN", template.render(values)?)
 
 
 // ---------------------------------------------------------------------------
@@ -1570,8 +1879,7 @@ class \nodoc\ iso _TestParseErrorCircularInclude is UnitTest
         m("self") = "{{ include \"self\" }}"
         m
       end
-      let ctx = TemplateContext(
-        recover Map[String, {(String): String}] end, partials)
+      let ctx = TemplateContext(where partials' = partials)
       Template.parse("{{ include \"self\" }}", ctx)?
     })
 
@@ -1583,8 +1891,7 @@ class \nodoc\ iso _TestParseErrorCircularInclude is UnitTest
         m("b") = "{{ include \"a\" }}"
         m
       end
-      let ctx = TemplateContext(
-        recover Map[String, {(String): String}] end, partials)
+      let ctx = TemplateContext(where partials' = partials)
       Template.parse("{{ include \"a\" }}", ctx)?
     })
 
@@ -1602,8 +1909,7 @@ class \nodoc\ iso _TestRenderInclude is UnitTest
       m("greeting") = "Hello {{ name }}!"
       m
     end
-    let ctx = TemplateContext(
-      recover Map[String, {(String): String}] end, partials)
+    let ctx = TemplateContext(where partials' = partials)
     let template = Template.parse(">> {{ include \"greeting\" }} <<", ctx)?
     let values = TemplateValues
     values("name") = "world"
@@ -1619,8 +1925,7 @@ class \nodoc\ iso _TestRenderIncludeInsideIf is UnitTest
       m("badge") = "[{{ role }}]"
       m
     end
-    let ctx = TemplateContext(
-      recover Map[String, {(String): String}] end, partials)
+    let ctx = TemplateContext(where partials' = partials)
     let template = Template.parse(
       "{{ if role }}{{ include \"badge\" }}{{ end }}", ctx)?
 
@@ -1642,8 +1947,7 @@ class \nodoc\ iso _TestRenderIncludeInsideLoop is UnitTest
       m("item") = "<{{ x }}>"
       m
     end
-    let ctx = TemplateContext(
-      recover Map[String, {(String): String}] end, partials)
+    let ctx = TemplateContext(where partials' = partials)
     let template = Template.parse(
       "{{ for x in items }}{{ include \"item\" }}{{ end }}", ctx)?
     let values = TemplateValues
@@ -1663,8 +1967,7 @@ class \nodoc\ iso _TestRenderNestedIncludes is UnitTest
       m("c") = "{{ x }}"
       m
     end
-    let ctx = TemplateContext(
-      recover Map[String, {(String): String}] end, partials)
+    let ctx = TemplateContext(where partials' = partials)
     let template = Template.parse("{{ include \"a\" }}", ctx)?
     let values = TemplateValues
     values("x") = "deep"
@@ -1681,8 +1984,7 @@ class \nodoc\ iso _TestRenderMultipleIncludes is UnitTest
       m("footer") = "--end--"
       m
     end
-    let ctx = TemplateContext(
-      recover Map[String, {(String): String}] end, partials)
+    let ctx = TemplateContext(where partials' = partials)
     let template = Template.parse(
       "{{ include \"header\" }}\nbody\n{{ include \"footer\" }}", ctx)?
     let values = TemplateValues
@@ -1700,8 +2002,7 @@ class \nodoc\ iso _TestRenderIncludeWithBlocks is UnitTest
         "{{ if items }}{{ for i in items }}{{ i }},{{ end }}{{ else }}none{{ end }}"
       m
     end
-    let ctx = TemplateContext(
-      recover Map[String, {(String): String}] end, partials)
+    let ctx = TemplateContext(where partials' = partials)
     let template = Template.parse("Items: {{ include \"list\" }}", ctx)?
 
     // With items
@@ -1817,8 +2118,7 @@ class \nodoc\ iso _TestParseErrorExtendsNotFirst is UnitTest
         m("base") = "base content"
         m
       end
-      let ctx = TemplateContext(
-        recover Map[String, {(String): String}] end, partials)
+      let ctx = TemplateContext(where partials' = partials)
       Template.parse("{{ name }}{{ extends \"base\" }}", ctx)?
     })
 
@@ -1829,8 +2129,7 @@ class \nodoc\ iso _TestParseErrorExtendsNotFirst is UnitTest
         m("base") = "base content"
         m
       end
-      let ctx = TemplateContext(
-        recover Map[String, {(String): String}] end, partials)
+      let ctx = TemplateContext(where partials' = partials)
       Template.parse(
         "{{ if x }}y{{ end }}{{ extends \"base\" }}", ctx)?
     })
@@ -1856,8 +2155,7 @@ class \nodoc\ iso _TestParseErrorCircularExtends is UnitTest
         m("self") = "{{ extends \"self\" }}"
         m
       end
-      let ctx = TemplateContext(
-        recover Map[String, {(String): String}] end, partials)
+      let ctx = TemplateContext(where partials' = partials)
       Template.parse("{{ extends \"self\" }}", ctx)?
     })
 
@@ -1869,8 +2167,7 @@ class \nodoc\ iso _TestParseErrorCircularExtends is UnitTest
         m("b") = "{{ extends \"a\" }}"
         m
       end
-      let ctx = TemplateContext(
-        recover Map[String, {(String): String}] end, partials)
+      let ctx = TemplateContext(where partials' = partials)
       Template.parse("{{ extends \"a\" }}", ctx)?
     })
 
@@ -1905,8 +2202,7 @@ class \nodoc\ iso _TestParseErrorDuplicateBlock is UnitTest
         m("base") = "{{ block slot }}default{{ end }}"
         m
       end
-      let ctx = TemplateContext(
-        recover Map[String, {(String): String}] end, partials)
+      let ctx = TemplateContext(where partials' = partials)
       Template.parse(
         "{{ extends \"base\" }}" +
         "{{ block slot }}first{{ end }}" +
@@ -1930,8 +2226,7 @@ class \nodoc\ iso _TestRenderInheritanceBasic is UnitTest
         "<body>{{ block content }}{{ end }}</body>"
       m
     end
-    let ctx = TemplateContext(
-      recover Map[String, {(String): String}] end, partials)
+    let ctx = TemplateContext(where partials' = partials)
     let template = Template.parse(
       "{{ extends \"base\" }}" +
       "{{ block content }}Hello!{{ end }}",
@@ -1954,8 +2249,7 @@ class \nodoc\ iso _TestRenderInheritanceMultipleBlocks is UnitTest
         "-{{ block c }}C{{ end }}"
       m
     end
-    let ctx = TemplateContext(
-      recover Map[String, {(String): String}] end, partials)
+    let ctx = TemplateContext(where partials' = partials)
 
     // Override only 'a' and 'c', leave 'b' as default
     let template = Template.parse(
@@ -1975,8 +2269,7 @@ class \nodoc\ iso _TestRenderInheritanceEmptyDefault is UnitTest
       m("base") = "before{{ block slot }}{{ end }}after"
       m
     end
-    let ctx = TemplateContext(
-      recover Map[String, {(String): String}] end, partials)
+    let ctx = TemplateContext(where partials' = partials)
 
     // Without override — empty default
     let t1 = Template.parse(
@@ -1999,8 +2292,7 @@ class \nodoc\ iso _TestRenderInheritanceBlockInsideIf is UnitTest
         "{{ if show }}{{ block content }}default{{ end }}{{ end }}"
       m
     end
-    let ctx = TemplateContext(
-      recover Map[String, {(String): String}] end, partials)
+    let ctx = TemplateContext(where partials' = partials)
     let template = Template.parse(
       "{{ extends \"base\" }}" +
       "{{ block content }}overridden{{ end }}",
@@ -2028,8 +2320,7 @@ class \nodoc\ iso _TestRenderInheritanceMultiLevel is UnitTest
         "{{ block body }}P-body{{ end }}"
       m
     end
-    let ctx = TemplateContext(
-      recover Map[String, {(String): String}] end, partials)
+    let ctx = TemplateContext(where partials' = partials)
 
     // Child overrides title, parent already overrode body
     let template = Template.parse(
@@ -2050,8 +2341,7 @@ class \nodoc\ iso _TestRenderInheritanceWithIncludes is UnitTest
         "{{ include \"nav\" }}{{ block content }}default{{ end }}"
       m
     end
-    let ctx = TemplateContext(
-      recover Map[String, {(String): String}] end, partials)
+    let ctx = TemplateContext(where partials' = partials)
     let template = Template.parse(
       "{{ extends \"base\" }}" +
       "{{ block content }}page{{ end }}",
@@ -2069,8 +2359,7 @@ class \nodoc\ iso _TestRenderInheritanceBlockWithVariables is UnitTest
         "<title>{{ block title }}Default{{ end }}</title>"
       m
     end
-    let ctx = TemplateContext(
-      recover Map[String, {(String): String}] end, partials)
+    let ctx = TemplateContext(where partials' = partials)
     let template = Template.parse(
       "{{ extends \"base\" }}" +
       "{{ block title }}{{ page_title }}{{ end }}",
@@ -2092,126 +2381,7 @@ class \nodoc\ iso _TestRenderBlocksWithoutExtends is UnitTest
 
 
 // ---------------------------------------------------------------------------
-// Default value parser tests
-// ---------------------------------------------------------------------------
-
-class \nodoc\ iso _PropValidPropDefaultParsesToPropNode is Property1[String]
-  fun name(): String =>
-    "Parser: valid prop default parses to _PropNode"
-
-  fun gen(): Generator[String] =>
-    _Generators.valid_prop_default_stmt()
-
-  fun ref property(stmt: String, h: PropertyHelper) ? =>
-    let node = _StmtParser.parse(stmt)? as _PropNode
-    node.default_value as String
-
-
-class \nodoc\ iso _TestParserDefaultNodeFields is UnitTest
-  fun name(): String => "Parser: default value node field correctness"
-
-  fun apply(h: TestHelper)? =>
-    // name | default("hello") → _PropNode with default_value = "hello"
-    match _StmtParser.parse("name | default(\"hello\")")?
-    | let p: _PropNode =>
-      h.assert_eq[String]("name", p.name)
-      h.assert_eq[USize](0, p.props.size())
-      h.assert_eq[String]("hello", p.default_value as String)
-    else h.fail("expected _PropNode"); error
-    end
-
-    // a.b | default("x") → dotted prop with default
-    match _StmtParser.parse("a.b | default(\"x\")")?
-    | let p: _PropNode =>
-      h.assert_eq[String]("a", p.name)
-      h.assert_eq[USize](1, p.props.size())
-      h.assert_eq[String]("b", p.props(0)?)
-      h.assert_eq[String]("x", p.default_value as String)
-    else h.fail("expected _PropNode with dotted prop"); error
-    end
-
-    // a | default("") → empty default
-    match _StmtParser.parse("a | default(\"\")")?
-    | let p: _PropNode =>
-      h.assert_eq[String]("a", p.name)
-      h.assert_eq[String]("", p.default_value as String)
-    else h.fail("expected _PropNode with empty default"); error
-    end
-
-    // Plain "foo" → no default (default_value is None)
-    match _StmtParser.parse("foo")?
-    | let p: _PropNode =>
-      h.assert_eq[String]("foo", p.name)
-      match p.default_value
-      | let _: None => None
-      else h.fail("expected None default_value for plain prop"); error
-      end
-    else h.fail("expected _PropNode"); error
-    end
-
-
-class \nodoc\ iso _TestParserDefaultInCall is UnitTest
-  fun name(): String => "Parser: default value inside function call"
-
-  fun apply(h: TestHelper)? =>
-    // fn(name | default("x")) → _CallNode with defaulted arg
-    let ctx = TemplateContext(
-      recover
-        let functions = Map[String, {(String): String}]
-        functions("fn") = {(s) => s}
-        functions
-      end
-    )
-
-    match _StmtParser.parse("fn(name | default(\"x\"))")?
-    | let c: _CallNode =>
-      h.assert_eq[String]("fn", c.name)
-      h.assert_eq[String]("name", c.arg.name)
-      h.assert_eq[String]("x", c.arg.default_value as String)
-    else h.fail("expected _CallNode"); error
-    end
-
-    // fn(name) → still works, no default
-    match _StmtParser.parse("fn(name)")?
-    | let c: _CallNode =>
-      h.assert_eq[String]("fn", c.name)
-      h.assert_eq[String]("name", c.arg.name)
-      match c.arg.default_value
-      | let _: None => None
-      else h.fail("expected None default for plain call arg"); error
-      end
-    else h.fail("expected _CallNode"); error
-    end
-
-
-class \nodoc\ iso _TestParserDefaultNotInControlFlow is UnitTest
-  fun name(): String =>
-    "Parser: default value not allowed in control flow"
-
-  fun apply(h: TestHelper) =>
-    // if name | default("x") → should fail
-    h.assert_error({() ? =>
-      _StmtParser.parse("if name | default(\"x\")")?
-    })
-
-    // ifnot name | default("x") → should fail
-    h.assert_error({() ? =>
-      _StmtParser.parse("ifnot name | default(\"x\")")?
-    })
-
-    // for x in items | default("x") → should fail
-    h.assert_error({() ? =>
-      _StmtParser.parse("for x in items | default(\"x\")")?
-    })
-
-    // elseif name | default("x") → should fail
-    h.assert_error({() ? =>
-      _StmtParser.parse("elseif name | default(\"x\")")?
-    })
-
-
-// ---------------------------------------------------------------------------
-// Default value render tests
+// Default value render tests (using pipe syntax)
 // ---------------------------------------------------------------------------
 
 class \nodoc\ iso _PropDefaultWhenMissing
@@ -2222,7 +2392,7 @@ class \nodoc\ iso _PropDefaultWhenMissing
   fun gen(): Generator[(String, String)] =>
     Generators.zip2[String, String](
       _Generators.valid_name(),
-      _Generators.default_value_string())
+      _Generators.filter_arg_string())
 
   fun ref property(sample: (String, String), h: PropertyHelper) ? =>
     (let n, let default_val) = sample
@@ -2240,8 +2410,12 @@ class \nodoc\ iso _PropDefaultWhenPresent
   fun gen(): Generator[(String, String, String)] =>
     Generators.zip3[String, String, String](
       _Generators.valid_name(),
-      _Generators.template_value_string(),
-      _Generators.default_value_string())
+      _Generators.template_value_string()
+        .filter({(s: String): (String^, Bool) =>
+          let ok = s.size() > 0
+          (consume s, ok)
+        }),
+      _Generators.filter_arg_string())
 
   fun ref property(
     sample: (String, String, String),
@@ -2298,35 +2472,6 @@ class \nodoc\ iso _TestRenderDefaultWithDottedProp is UnitTest
     h.assert_eq[String]("anon", template.render(v2)?)
 
 
-class \nodoc\ iso _TestRenderDefaultInCall is UnitTest
-  fun name(): String =>
-    "Render: default value in function call argument"
-
-  fun apply(h: TestHelper)? =>
-    let ctx = TemplateContext(
-      recover
-        let functions = Map[String, {(String): String}]
-        functions("upper") = {(s) =>
-          let out = s.clone()
-          out.upper_in_place()
-          consume out
-        }
-        functions
-      end
-    )
-
-    let template = Template.parse(
-      "{{ upper(name | default(\"anon\")) }}", ctx)?
-
-    // Variable present → function applied to actual value
-    let v1 = TemplateValues
-    v1("name") = "alice"
-    h.assert_eq[String]("ALICE", template.render(v1)?)
-
-    // Variable missing → function applied to default
-    h.assert_eq[String]("ANON", template.render(TemplateValues)?)
-
-
 class \nodoc\ iso _TestRenderDefaultInsideLoop is UnitTest
   fun name(): String => "Render: default value inside loop body"
 
@@ -2369,24 +2514,6 @@ class \nodoc\ iso _TestRenderDefaultInsideIf is UnitTest
 
     // show absent → body not rendered at all
     h.assert_eq[String]("", template.render(TemplateValues)?)
-
-
-class \nodoc\ iso _TestCallArgMissingNoDefault is UnitTest
-  fun name(): String =>
-    "Call: missing argument without default still errors"
-
-  fun apply(h: TestHelper) =>
-    let ctx = TemplateContext(
-      recover
-        let functions = Map[String, {(String): String}]
-        functions("f") = {(s) => s}
-        functions
-      end
-    )
-    h.assert_error({() ? =>
-      let template = Template.parse("{{ f(missing) }}", ctx)?
-      template.render(TemplateValues)?
-    })
 
 
 class \nodoc\ iso _TestRenderDefaultWithBraces is UnitTest
@@ -2492,8 +2619,7 @@ class \nodoc\ iso _TestTrimWithInclude is UnitTest
   fun name(): String => "Trim: with include"
 
   fun apply(h: TestHelper)? =>
-    let ctx = TemplateContext(
-      recover Map[String, {(String): String}] end,
+    let ctx = TemplateContext(where partials' =
       recover val
         let p = Map[String, String]
         p("part") = "included"
@@ -2509,8 +2635,7 @@ class \nodoc\ iso _TestTrimWithExtends is UnitTest
   fun name(): String => "Trim: extends with trim markers"
 
   fun apply(h: TestHelper)? =>
-    let ctx = TemplateContext(
-      recover Map[String, {(String): String}] end,
+    let ctx = TemplateContext(where partials' =
       recover val
         let p = Map[String, String]
         p("base") = "hello {{ block content }}default{{ end }}"
