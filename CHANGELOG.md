@@ -14,6 +14,7 @@ All notable changes to this project will be documented in this file. This projec
 - Add `include` partials ([PR #49](https://github.com/ponylang/templates/pull/49))
 - Add template inheritance ([PR #50](https://github.com/ponylang/templates/pull/50))
 - Add default values for missing variables ([PR #52](https://github.com/ponylang/templates/pull/52))
+- Add default values for missing variables ([PR #52](https://github.com/ponylang/templates/pull/52))
 
 ### Changed
 
