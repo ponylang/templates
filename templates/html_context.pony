@@ -44,15 +44,16 @@ primitive _StateDqAttrVal
 primitive _StateSqAttrVal
 primitive _StateUnqAttrVal
 primitive _StateComment
-primitive _StateRcdata
+primitive _StateRcdataTitle
+primitive _StateRcdataTextarea
 primitive _StateScript
 primitive _StateStyle
 
 type _HtmlState is
   ( _StateText | _StateTag | _StateAttrName | _StateAfterAttrName
   | _StateBeforeAttrVal | _StateDqAttrVal | _StateSqAttrVal
-  | _StateUnqAttrVal | _StateComment | _StateRcdata
-  | _StateScript | _StateStyle )
+  | _StateUnqAttrVal | _StateComment | _StateRcdataTitle
+  | _StateRcdataTextarea | _StateScript | _StateStyle )
 
 
 class _HtmlContextTracker
@@ -92,7 +93,8 @@ class _HtmlContextTracker
     | _StateSqAttrVal => if c == '\'' then _state = _StateTag end
     | _StateUnqAttrVal => _in_unq_attr_val(c)
     | _StateComment => _in_comment(c)
-    | _StateRcdata => _in_rcdata(c)
+    | _StateRcdataTitle => _in_rcdata(c)
+    | _StateRcdataTextarea => _in_rcdata(c)
     | _StateScript => _in_script(c)
     | _StateStyle => _in_style(c)
     end
@@ -206,8 +208,10 @@ class _HtmlContextTracker
       _state = _StateScript
     elseif (_tag_name == "style") then
       _state = _StateStyle
-    elseif (_tag_name == "title") or (_tag_name == "textarea") then
-      _state = _StateRcdata
+    elseif (_tag_name == "title") then
+      _state = _StateRcdataTitle
+    elseif (_tag_name == "textarea") then
+      _state = _StateRcdataTextarea
     else
       _state = _StateText
     end
@@ -230,10 +234,12 @@ class _HtmlContextTracker
       if _contains_close_tag(text, "style") then
         _state = _StateText
       end
-    | _StateRcdata =>
-      if _contains_close_tag(text, "title")
-        or _contains_close_tag(text, "textarea")
-      then
+    | _StateRcdataTitle =>
+      if _contains_close_tag(text, "title") then
+        _state = _StateText
+      end
+    | _StateRcdataTextarea =>
+      if _contains_close_tag(text, "textarea") then
         _state = _StateText
       end
     | _StateComment =>
@@ -285,7 +291,8 @@ class _HtmlContextTracker
     | _StateScript => CtxScript
     | _StateStyle => CtxStyle
     | _StateComment => CtxComment
-    | _StateRcdata => CtxRcdata
+    | _StateRcdataTitle => CtxRcdata
+    | _StateRcdataTextarea => CtxRcdata
     | _StateTag => CtxError
     | _StateAttrName => CtxError
     | _StateAfterAttrName => CtxError

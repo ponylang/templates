@@ -3526,13 +3526,41 @@ class \nodoc\ iso _TestContextRcdata is UnitTest
   fun name(): String => "HtmlContext: title/textarea RCDATA"
 
   fun apply(h: TestHelper) =>
-    let t = _HtmlContextTracker
-    t.feed("<title>")
-    h.assert_is[HtmlContext](CtxRcdata, t.context())
-    let closing = "</title>"
-    t.feed(closing)
-    t.feed_close_tag(closing)
-    h.assert_is[HtmlContext](CtxText, t.context())
+    // <title> enters RCDATA and </title> exits it
+    let t1 = _HtmlContextTracker
+    t1.feed("<title>")
+    h.assert_is[HtmlContext](CtxRcdata, t1.context())
+    let closing1 = "</title>"
+    t1.feed(closing1)
+    t1.feed_close_tag(closing1)
+    h.assert_is[HtmlContext](CtxText, t1.context())
+
+    // <textarea> enters RCDATA and </textarea> exits it
+    let t2 = _HtmlContextTracker
+    t2.feed("<textarea>")
+    h.assert_is[HtmlContext](CtxRcdata, t2.context())
+    let closing2 = "</textarea>"
+    t2.feed(closing2)
+    t2.feed_close_tag(closing2)
+    h.assert_is[HtmlContext](CtxText, t2.context())
+
+    // </textarea> does NOT close a <title> RCDATA state
+    let t3 = _HtmlContextTracker
+    t3.feed("<title>")
+    h.assert_is[HtmlContext](CtxRcdata, t3.context())
+    let wrong1 = "</textarea>"
+    t3.feed(wrong1)
+    t3.feed_close_tag(wrong1)
+    h.assert_is[HtmlContext](CtxRcdata, t3.context())
+
+    // </title> does NOT close a <textarea> RCDATA state
+    let t4 = _HtmlContextTracker
+    t4.feed("<textarea>")
+    h.assert_is[HtmlContext](CtxRcdata, t4.context())
+    let wrong2 = "</title>"
+    t4.feed(wrong2)
+    t4.feed_close_tag(wrong2)
+    h.assert_is[HtmlContext](CtxRcdata, t4.context())
 
 class \nodoc\ iso _TestContextUrlAttr is UnitTest
   fun name(): String => "HtmlContext: URL attributes"
