@@ -67,7 +67,7 @@ primitive _HtmlEscape
   fun js_string(raw: String): String val =>
     """
     Escape for JavaScript string context. Escapes backslash, quotes,
-    angle brackets, and non-ASCII to `\\xNN` / `\\uNNNN`.
+    backticks, angle brackets, and non-ASCII to `\\xNN` / `\\uNNNN`.
     """
     recover val
       let out = String(raw.size())
@@ -79,6 +79,7 @@ primitive _HtmlEscape
         | '<' => out.append("\\x3c")
         | '>' => out.append("\\x3e")
         | '&' => out.append("\\x26")
+        | '`' => out.append("\\x60")
         | '\n' => out.append("\\n")
         | '\r' => out.append("\\r")
         | '\t' => out.append("\\t")
