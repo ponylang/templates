@@ -169,6 +169,21 @@ actor \nodoc\ Main is TestList
     test(_TestTrimProducesEmptyLiteral)
     test(Property1UnitTest[String](_PropTrimDeterminism))
 
+    // Comment tests
+    test(Property1UnitTest[String](_PropCommentInvisible))
+    test(Property1UnitTest[(String, String)](_PropCommentBodyIrrelevant))
+    test(_TestCommentBasic)
+    test(_TestCommentWithTrim)
+    test(_TestCommentBeforeExtends)
+    test(_TestCommentInsideIf)
+    test(_TestCommentInsideLoop)
+    test(_TestCommentInsideElse)
+    test(_TestCommentAsOnlyBlockContent)
+    test(_TestCommentAdjacent)
+    test(_TestCommentBetweenLiterals)
+    test(_TestCommentMinimal)
+    test(_TestCommentWithQuotes)
+
     // from_file test (Step 8)
     test(_TestFromFile)
 
@@ -367,6 +382,29 @@ primitive \nodoc\ _Generators
       " !#$%&'()*+,-./0123456789:;<=>?@"
       + "ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`"
       + "abcdefghijklmnopqrstuvwxyz{|}~"
+    Generator[String](
+      object is GenObj[String]
+        fun generate(rnd: Randomness): String^ =>
+          let len = rnd.usize(0, 30)
+          let s = recover iso String(len) end
+          var i: USize = 0
+          while i < len do
+            try s.push(chars(rnd.usize(0, chars.size() - 1))?) end
+            i = i + 1
+          end
+          consume s
+      end)
+
+  fun comment_body(): Generator[String] =>
+    """
+    Generates printable ASCII strings 0-30 chars, excluding `}` so that `}}`
+    can never appear inside the comment body.
+    """
+    let chars: String val =
+      " !\"#$%&'()*+,-./"
+      + "0123456789:;<=>?@"
+      + "ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`"
+      + "abcdefghijklmnopqrstuvwxyz{|~"
     Generator[String](
       object is GenObj[String]
         fun generate(rnd: Randomness): String^ =>
@@ -2860,6 +2898,195 @@ class \nodoc\ iso _PropPipeLiteralUpper is Property1[String]
     end
     let result = Template.parse(source)?.render(TemplateValues)?
     h.assert_eq[String](sample.upper(), result)
+
+
+// ---------------------------------------------------------------------------
+// Comment tests
+// ---------------------------------------------------------------------------
+
+class \nodoc\ iso _PropCommentInvisible is Property1[String]
+  """
+  For any generated comment body, `{{! body }}` renders as empty string.
+  """
+  fun name(): String => "Prop: comment renders as empty string"
+
+  fun gen(): Generator[String] =>
+    _Generators.comment_body()
+
+  fun property(sample: String, h: PropertyHelper)? =>
+    let source = recover val "{{!" + sample + "}}" end
+    h.assert_eq[String]("",
+      Template.parse(source)?.render(TemplateValues)?)
+
+
+class \nodoc\ iso _PropCommentBodyIrrelevant
+  is Property1[(String, String)]
+  """
+  Two templates differing only in comment body render identically, proving
+  comment content is truly discarded.
+  """
+  fun name(): String => "Prop: comment body is irrelevant to output"
+
+  fun gen(): Generator[(String, String)] =>
+    Generators.zip2[String, String](
+      _Generators.comment_body(),
+      _Generators.comment_body())
+
+  fun property(sample: (String, String), h: PropertyHelper)? =>
+    (let body1, let body2) = sample
+    let source1 = recover val "before{{!" + body1 + "}}after" end
+    let source2 = recover val "before{{!" + body2 + "}}after" end
+    let r1 = Template.parse(source1)?.render(TemplateValues)?
+    let r2 = Template.parse(source2)?.render(TemplateValues)?
+    h.assert_eq[String](r1, r2)
+
+
+class \nodoc\ iso _TestCommentBasic is UnitTest
+  fun name(): String => "Comment: basic comment is invisible"
+
+  fun apply(h: TestHelper)? =>
+    h.assert_eq[String]("hello  world",
+      Template.parse("hello {{! ignored }} world")?.render(TemplateValues)?)
+
+
+class \nodoc\ iso _TestCommentWithTrim is UnitTest
+  fun name(): String => "Comment: trim markers with comments"
+
+  fun apply(h: TestHelper)? =>
+    // Right-trim strips leading whitespace from following literal
+    h.assert_eq[String]("helloworld",
+      Template.parse("hello{{! comment -}}   world")?
+        .render(TemplateValues)?)
+    // Left-trim strips trailing whitespace from preceding literal
+    h.assert_eq[String]("helloworld",
+      Template.parse("hello   {{-! comment }}world")?
+        .render(TemplateValues)?)
+    // Both trims
+    h.assert_eq[String]("helloworld",
+      Template.parse("hello   {{-! comment -}}   world")?
+        .render(TemplateValues)?)
+
+
+class \nodoc\ iso _TestCommentBeforeExtends is UnitTest
+  fun name(): String => "Comment: comment before extends is transparent"
+
+  fun apply(h: TestHelper)? =>
+    let partials = recover val
+      let p = Map[String, String]
+      p("base") = "BASE:{{ block main }}default{{ end }}"
+      p
+    end
+    let ctx = TemplateContext(where partials' = partials)
+    // Comment before extends — should work fine
+    let child = "{{! layout comment }}{{ extends \"base\" }}{{ block main }}override{{ end }}"
+    h.assert_eq[String]("BASE:override",
+      Template.parse(child, ctx)?.render(TemplateValues)?)
+    // Extends after a non-comment block should still fail
+    h.assert_error({()? =>
+      Template.parse(
+        "{{ x }}{{ extends \"base\" }}{{ block main }}override{{ end }}",
+        ctx)?
+    })
+
+
+class \nodoc\ iso _TestCommentInsideIf is UnitTest
+  fun name(): String => "Comment: inside if body"
+
+  fun apply(h: TestHelper)? =>
+    let values = TemplateValues
+    values("show") = "yes"
+    h.assert_eq[String]("visible",
+      Template.parse("{{ if show }}{{! hidden note }}visible{{ end }}")?
+        .render(values)?)
+
+
+class \nodoc\ iso _TestCommentInsideLoop is UnitTest
+  fun name(): String => "Comment: inside loop body"
+
+  fun apply(h: TestHelper)? =>
+    let values = TemplateValues
+    values("items") = TemplateValue(
+      [TemplateValue("a"); TemplateValue("b")])
+    h.assert_eq[String]("ab",
+      Template.parse(
+        "{{ for x in items }}{{! loop comment }}{{ x }}{{ end }}")?
+        .render(values)?)
+
+
+class \nodoc\ iso _TestCommentInsideElse is UnitTest
+  fun name(): String => "Comment: inside else branch"
+
+  fun apply(h: TestHelper)? =>
+    h.assert_eq[String]("fallback",
+      Template.parse(
+        "{{ if missing }}yes{{ else }}{{! else comment }}fallback{{ end }}")?
+        .render(TemplateValues)?)
+
+
+class \nodoc\ iso _TestCommentAsOnlyBlockContent is UnitTest
+  fun name(): String => "Comment: as sole content of if/loop body"
+
+  fun apply(h: TestHelper)? =>
+    let values = TemplateValues
+    values("show") = "yes"
+    // Comment as only content of if body produces empty body
+    h.assert_eq[String]("",
+      Template.parse("{{ if show }}{{! only a comment }}{{ end }}")?
+        .render(values)?)
+    // Comment as only content of loop body
+    values("items") = TemplateValue(
+      [TemplateValue("a"); TemplateValue("b")])
+    h.assert_eq[String]("",
+      Template.parse(
+        "{{ for x in items }}{{! only a comment }}{{ end }}")?
+        .render(values)?)
+
+
+class \nodoc\ iso _TestCommentAdjacent is UnitTest
+  fun name(): String => "Comment: multiple adjacent comments"
+
+  fun apply(h: TestHelper)? =>
+    h.assert_eq[String]("ab",
+      Template.parse("a{{! one }}{{! two }}{{! three }}b")?
+        .render(TemplateValues)?)
+
+
+class \nodoc\ iso _TestCommentBetweenLiterals is UnitTest
+  fun name(): String => "Comment: between literals produces concatenation"
+
+  fun apply(h: TestHelper)? =>
+    h.assert_eq[String]("ab",
+      Template.parse("a{{! comment }}b")?.render(TemplateValues)?)
+
+
+class \nodoc\ iso _TestCommentMinimal is UnitTest
+  fun name(): String => "Comment: minimal forms"
+
+  fun apply(h: TestHelper)? =>
+    // Just the exclamation mark, no body
+    h.assert_eq[String]("",
+      Template.parse("{{!}}")?.render(TemplateValues)?)
+    // Exclamation mark with whitespace
+    h.assert_eq[String]("",
+      Template.parse("{{! }}")?.render(TemplateValues)?)
+
+
+class \nodoc\ iso _TestCommentWithQuotes is UnitTest
+  fun name(): String => "Comment: double quotes inside comment body"
+
+  fun apply(h: TestHelper)? =>
+    // A " inside a comment must not trigger quote-aware delimiter scanning
+    h.assert_eq[String]("ab",
+      Template.parse("a{{! she said \"hello\" }}b")?
+        .render(TemplateValues)?)
+    // Single unmatched quote
+    h.assert_eq[String]("ab",
+      Template.parse("a{{! it's a \" quote }}b")?
+        .render(TemplateValues)?)
+    // Single } inside comment (legal — only }} closes)
+    h.assert_eq[String]("ab",
+      Template.parse("a{{! single } brace }}b")?
+        .render(TemplateValues)?)
 
 
 // ---------------------------------------------------------------------------

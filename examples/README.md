@@ -6,6 +6,10 @@ Each subdirectory is a self-contained Pony program demonstrating a different par
 
 Parses a template with a single placeholder, binds a value, and renders the result. Demonstrates the core workflow: `Template.parse()`, `TemplateValues`, and `Template.render()`. Start here if you're new to the library.
 
+## [comments-example](comments-example/)
+
+Uses `{{! ... }}` syntax to add comments to templates. Comments are stripped from the output entirely, so they're useful for documenting template logic without affecting rendered text. Shows basic comments and comments combined with trim markers inside loops.
+
 ## [filters-example](filters-example/)
 
 Uses the filter/pipe system to transform values. Demonstrates built-in filters (`upper`, `trim`, `capitalize`, `title`, `default`), chaining multiple filters (`{{ greeting | trim | capitalize }}`), string literals as pipe sources (`{{ "hello world" | upper }}`), custom filter registration via `TemplateContext`, and filters inside loops.
