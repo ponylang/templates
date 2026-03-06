@@ -255,6 +255,35 @@ class TemplateContext
     partials = partials'
 
 
+class box _BlockScan
+  """
+  Result of scanning a single `{{ }}` block from the template source. Holds
+  the extracted statement content and positional metadata needed by the outer
+  parsing loop.
+  """
+  let stmt_source: String
+  let start_pos: ISize
+  let end_pos: ISize
+  let left_trim: Bool
+  let right_trim: Bool
+  let is_comment: Bool
+
+  new box create(
+    stmt_source': String,
+    start_pos': ISize,
+    end_pos': ISize,
+    left_trim': Bool,
+    right_trim': Bool,
+    is_comment': Bool
+  ) =>
+    stmt_source = stmt_source'
+    start_pos = start_pos'
+    end_pos = end_pos'
+    left_trim = left_trim'
+    right_trim = right_trim'
+    is_comment = is_comment'
+
+
 class val Template
   let _parts: Array[_Part] box
 
@@ -285,60 +314,28 @@ class val Template
     var trim_next_literal: Bool = false
     var prev_end: ISize = 0
     while prev_end < source.size().isize() do
-      let start_pos =
-        try source.find("{{" where offset = prev_end)?
-        else break end
-      // Comments don't use quote-aware scanning — a `"` inside a comment
-      // body is literal text, not a string delimiter.
-      let end_pos =
-        try
-          if _is_comment_open(source, start_pos) then
-            source.find("}}" where offset = start_pos + 2)?
-          else
-            _find_close_delim(source, start_pos + 2)?
-          end
-        else break end
-
-      // Detect {{- (left trim) and -}} (right trim)
-      let left_trim =
-        try source((start_pos + 2).usize())? == '-'
-        else false
+      let block =
+        match _scan_next_block(source, prev_end)
+        | let b: _BlockScan => b
+        | None => break
         end
-      let stmt_start: ISize =
-        if left_trim then start_pos + 3 else start_pos + 2 end
-      let right_trim =
-        try
-          (end_pos > stmt_start) and (source((end_pos - 1).usize())? == '-')
-        else false
-        end
-      let stmt_end: ISize =
-        if right_trim then end_pos - 1 else end_pos end
 
-      if start_pos != prev_end then
-        var literal = source.substring(prev_end.isize(), start_pos)
+      if block.start_pos != prev_end then
+        var literal = source.substring(prev_end.isize(), block.start_pos)
         if trim_next_literal then literal.lstrip() end
-        if left_trim then literal.rstrip() end
+        if block.left_trim then literal.rstrip() end
         if literal.size() > 0 then
           current_parts.push((_Literal, consume literal))
         end
-      else
-        // No literal between tags, but reset trim_next_literal below
-        None
       end
-      trim_next_literal = right_trim
+      trim_next_literal = block.right_trim
 
-      let stmt_source: String = source.substring(stmt_start, stmt_end)
-
-      // Skip comment blocks: {{! ... }}
-      let stripped_stmt: String val = stmt_source.clone().>strip()
-      if (stripped_stmt.size() > 0) and
-        try stripped_stmt(0)? == '!' else false end
-      then
-        prev_end = end_pos + 2
+      if block.is_comment then
+        prev_end = block.end_pos + 2
         continue
       end
 
-      match _StmtParser.parse(stmt_source)?
+      match _StmtParser.parse(block.stmt_source)?
       | _EndNode => current_parts = _parse_end(open, parts)?
       | _ElseNode => current_parts = _parse_else(open)?
       | let else_if: _ElseIfNode =>
@@ -377,7 +374,7 @@ class val Template
       end
 
       first_stmt = false
-      prev_end = end_pos + 2
+      prev_end = block.end_pos + 2
     end
 
     if prev_end < source.size().isize() then
@@ -536,44 +533,18 @@ class val Template
   fun tag _check_extends(source: String): (String | None)? =>
     var search_from: ISize = 0
     while search_from < source.size().isize() do
-      let start_pos =
-        try source.find("{{" where offset = search_from)?
-        else return None
+      let block =
+        match _scan_next_block(source, search_from)
+        | let b: _BlockScan => b
+        | None => return None
         end
-      let end_pos =
-        try
-          if _is_comment_open(source, start_pos) then
-            source.find("}}" where offset = start_pos + 2)?
-          else
-            _find_close_delim(source, start_pos + 2)?
-          end
-        else return None
-        end
-      let left_trim =
-        try source((start_pos + 2).usize())? == '-'
-        else false
-        end
-      let stmt_start: ISize =
-        if left_trim then start_pos + 3 else start_pos + 2 end
-      let right_trim =
-        try
-          (end_pos > stmt_start) and (source((end_pos - 1).usize())? == '-')
-        else false
-        end
-      let stmt_end: ISize =
-        if right_trim then end_pos - 1 else end_pos end
-      let stmt_source: String val = source.substring(stmt_start, stmt_end)
 
-      // Skip comment blocks
-      let stripped_stmt: String val = stmt_source.clone().>strip()
-      if (stripped_stmt.size() > 0) and
-        try stripped_stmt(0)? == '!' else false end
-      then
-        search_from = end_pos + 2
+      if block.is_comment then
+        search_from = block.end_pos + 2
         continue
       end
 
-      match _StmtParser.parse(stmt_source)?
+      match _StmtParser.parse(block.stmt_source)?
       | let ext: _ExtendsNode => return ext.name
       else return None
       end
@@ -642,6 +613,52 @@ class val Template
       end
     end
     result
+
+  fun tag _scan_next_block(
+    source: String,
+    from: ISize
+  ): (_BlockScan | None) =>
+    """
+    Scan for the next `{{ }}` block starting from `from`. Returns a
+    `_BlockScan` with the extracted statement content and metadata, or
+    `None` if no more blocks are found (missing `{{` or `}}`).
+    """
+    let start_pos =
+      try source.find("{{" where offset = from)?
+      else return None
+      end
+    let is_comment = _is_comment_open(source, start_pos)
+    // Comments don't use quote-aware scanning — a `"` inside a comment
+    // body is literal text, not a string delimiter.
+    let end_pos =
+      try
+        if is_comment then source.find("}}" where offset = start_pos + 2)?
+        else _find_close_delim(source, start_pos + 2)?
+        end
+      else return None
+      end
+
+    let left_trim =
+      try source((start_pos + 2).usize())? == '-'
+      else false
+      end
+    let stmt_start: ISize =
+      if left_trim then start_pos + 3 else start_pos + 2 end
+    let right_trim =
+      try
+        (end_pos > stmt_start) and (source((end_pos - 1).usize())? == '-')
+      else false
+      end
+    let stmt_end: ISize =
+      if right_trim then end_pos - 1 else end_pos end
+
+    _BlockScan(
+      source.substring(stmt_start, stmt_end),
+      start_pos,
+      end_pos,
+      left_trim,
+      right_trim,
+      is_comment)
 
   fun tag _is_comment_open(source: String, start_pos: ISize): Bool =>
     """
