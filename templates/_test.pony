@@ -258,6 +258,7 @@ actor \nodoc\ Main is TestList
     test(_TestHtmlTemplateErrorInTagName)
     test(_TestHtmlTemplateErrorUnquotedAttr)
     test(_TestHtmlTemplateScriptContext)
+    test(_TestHtmlTemplateScriptBacktick)
     test(_TestHtmlTemplateCommentContext)
     test(_TestHtmlTemplateCssAttrContext)
     test(_TestHtmlTemplateRcdataContext)
@@ -3761,6 +3762,7 @@ class \nodoc\ iso _TestEscapeJs is UnitTest
     h.assert_eq[String]("\\x3c", _HtmlEscape.js_string("<"))
     h.assert_eq[String]("\\x3e", _HtmlEscape.js_string(">"))
     h.assert_eq[String]("\\x26", _HtmlEscape.js_string("&"))
+    h.assert_eq[String]("\\x60", _HtmlEscape.js_string("`"))
     h.assert_eq[String]("hello", _HtmlEscape.js_string("hello"))
 
 class \nodoc\ iso _TestEscapeCss is UnitTest
@@ -4083,6 +4085,22 @@ class \nodoc\ iso _TestHtmlTemplateScriptContext is UnitTest
       // Should use JS escaping, not HTML escaping
       h.assert_true(result.contains("\\\""))
       h.assert_false(result.contains("&#34;"))
+    else
+      h.fail("unexpected error")
+    end
+
+class \nodoc\ iso _TestHtmlTemplateScriptBacktick is UnitTest
+  fun name(): String => "HtmlTemplate: escapes backticks in script context"
+
+  fun apply(h: TestHelper) =>
+    try
+      let t = HtmlTemplate.parse(
+        "<script>var x = \"{{ val }}\";</script>")?
+      let v = TemplateValues
+      v("val") = "a`b"
+      let result = t.render(v)?
+      h.assert_true(result.contains("\\x60"))
+      h.assert_false(result.contains("`"))
     else
       h.fail("unexpected error")
     end
