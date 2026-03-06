@@ -54,6 +54,11 @@ use "valbytes"
 
 primitive _Literal
 
+primitive _RegularBlock
+primitive _CommentBlock
+primitive _RawBlock
+type _BlockKind is (_RegularBlock | _CommentBlock | _RawBlock)
+
 // A resolved filter argument: either a string literal or a property reference.
 type _ResolvedArg is (String | _PropNode)
 
@@ -90,23 +95,30 @@ class _If
 
 class box _IfElse
   """
-  Marker on the open-block stack indicating an `if` or `ifnot` block that has
+  Marker on the open-block stack indicating an `if` block that has transitioned
+  to its `else` branch. Stores the original condition and if-body so they can
+  be assembled into the final `_If` node when `end` is encountered.
+  """
+  let value: _PropNode
+  let if_body: Array[_Part] box
+
+  new box create(value': _PropNode, if_body': Array[_Part] box) =>
+    value = value'
+    if_body = if_body'
+
+class box _IfNotElse
+  """
+  Marker on the open-block stack indicating an `ifnot` block that has
   transitioned to its `else` branch. Stores the original condition and if-body
-  so they can be assembled into the final `_If` or `_IfNot` node when `end` is
+  so they can be assembled into the final `_IfNot` node when `end` is
   encountered.
   """
   let value: _PropNode
   let if_body: Array[_Part] box
-  let negated: Bool
 
-  new box create(
-    value': _PropNode,
-    if_body': Array[_Part] box,
-    negated': Bool = false
-  ) =>
+  new box create(value': _PropNode, if_body': Array[_Part] box) =>
     value = value'
     if_body = if_body'
-    negated = negated'
 
 class _IfNot
   let value: _PropNode
@@ -150,34 +162,30 @@ class box TemplateValue
   A value that can be used in a template. Either a single value or a
   sequence of values.
   """
-  let _value: (String | None)
-  let _values: Seq[TemplateValue] box
+  let _data: (String | Seq[TemplateValue] box)
   let _properties: Map[String, TemplateValue] box
 
   new box create(
     value: (String | Seq[TemplateValue] box),
     properties: Map[String, TemplateValue] box = Map[String, TemplateValue]
   ) =>
-    _value = match value
-    | let s: String => s
-    else None
-    end
-    _values = match value
-    | let seq: Seq[TemplateValue] box => seq
-    else []
-    end
+    _data = value
     _properties = properties
 
   fun apply(name: String): TemplateValue? => _properties(name)?
 
-  fun string(): String? => _value as String
+  fun string(): String? => _data as String
 
-  fun values(): Iterator[TemplateValue] => _values.values()
+  fun values(): Iterator[TemplateValue] =>
+    match _data
+    | let seq: Seq[TemplateValue] box => seq.values()
+    else Array[TemplateValue].values()
+    end
 
   fun box _is_truthy(): Bool =>
-    match _value
+    match _data
     | let _: String => true
-    else _values.values().has_next()
+    | let seq: Seq[TemplateValue] box => seq.values().has_next()
     end
 
 
@@ -265,15 +273,14 @@ class box _BlockScan
   """
   Result of scanning a single `{{ }}` block from the template source. Holds
   the extracted statement content and positional metadata needed by the outer
-  parsing loop.
+  parsing loop. The `kind` field distinguishes regular, comment, and raw blocks.
   """
   let stmt_source: String
   let start_pos: ISize
   let end_pos: ISize
   let left_trim: Bool
   let right_trim: Bool
-  let is_comment: Bool
-  let is_raw: Bool
+  let kind: _BlockKind
 
   new box create(
     stmt_source': String,
@@ -281,16 +288,14 @@ class box _BlockScan
     end_pos': ISize,
     left_trim': Bool,
     right_trim': Bool,
-    is_comment': Bool,
-    is_raw': Bool = false
+    kind': _BlockKind
   ) =>
     stmt_source = stmt_source'
     start_pos = start_pos'
     end_pos = end_pos'
     left_trim = left_trim'
     right_trim = right_trim'
-    is_comment = is_comment'
-    is_raw = is_raw'
+    kind = kind'
 
 
 class val Template
@@ -318,7 +323,7 @@ class val Template
   ): Array[_Part] box? =>
     var parts: Array[_Part] = []
     var current_parts = parts
-    var open: Array[((_IfNode | _IfNotNode | _LoopNode | _IfElse | _BlockNode), Array[_Part], Bool)] = []
+    var open: Array[((_IfNode | _IfNotNode | _LoopNode | _IfElse | _IfNotElse | _BlockNode), Array[_Part], Bool)] = []
     var first_stmt: Bool = true
     var trim_next_literal: Bool = false
     var prev_end: ISize = 0
@@ -340,12 +345,11 @@ class val Template
       end
       trim_next_literal = block.right_trim
 
-      if block.is_comment then
+      match block.kind
+      | _CommentBlock =>
         prev_end = block.end_pos + 2
         continue
-      end
-
-      if block.is_raw then
+      | _RawBlock =>
         let raw_content = block.stmt_source
         if raw_content.size() > 0 then
           current_parts.push((_Literal, raw_content))
@@ -441,7 +445,7 @@ class val Template
     _Pipe(pipe.source, consume resolved)
 
   fun tag _parse_end(
-    open: Array[((_IfNode | _IfNotNode | _LoopNode | _IfElse | _BlockNode), Array[_Part], Bool)],
+    open: Array[((_IfNode | _IfNotNode | _LoopNode | _IfElse | _IfNotElse | _BlockNode), Array[_Part], Bool)],
     parts: Array[_Part]
   ): Array[_Part]? =>
     (let stmt, let body, _) = open.pop()?
@@ -450,10 +454,8 @@ class val Template
       match stmt
       | let if': _IfNode => _If(if'.value, body)
       | let ifnot: _IfNotNode => _IfNot(ifnot.value, body)
-      | let ie: _IfElse =>
-        if ie.negated then _IfNot(ie.value, ie.if_body, body)
-        else _If(ie.value, ie.if_body, body)
-        end
+      | let ie: _IfElse => _If(ie.value, ie.if_body, body)
+      | let ie: _IfNotElse => _IfNot(ie.value, ie.if_body, body)
       | let loop: _LoopNode => _Loop(loop.target, loop.source, body)
       | let blk: _BlockNode => _Block(blk.name, body)
       end
@@ -466,12 +468,13 @@ class val Template
         match outer_stmt
         | let ie: _IfElse =>
           outer_body.push(current_node)
-          current_node =
-            if ie.negated then _IfNot(ie.value, ie.if_body, outer_body)
-            else _If(ie.value, ie.if_body, outer_body)
-            end
+          current_node = _If(ie.value, ie.if_body, outer_body)
+        | let ie: _IfNotElse =>
+          outer_body.push(current_node)
+          current_node = _IfNot(ie.value, ie.if_body, outer_body)
         else
-          error // auto_close should only be set on _IfElse entries
+          // auto_close should only be set on _IfElse/_IfNotElse entries
+          error
         end
       else
         break
@@ -487,7 +490,7 @@ class val Template
     next_current
 
   fun tag _parse_else(
-    open: Array[((_IfNode | _IfNotNode | _LoopNode | _IfElse | _BlockNode), Array[_Part], Bool)]
+    open: Array[((_IfNode | _IfNotNode | _LoopNode | _IfElse | _IfNotElse | _BlockNode), Array[_Part], Bool)]
   ): Array[_Part]? =>
     (let stmt, let if_body, _) = open.pop()?
     match stmt
@@ -497,15 +500,14 @@ class val Template
       else_body
     | let ifnot: _IfNotNode =>
       let else_body = Array[_Part]
-      open.push(
-        (_IfElse(ifnot.value, if_body where negated' = true), else_body, false))
+      open.push((_IfNotElse(ifnot.value, if_body), else_body, false))
       else_body
     else
       error // else only valid inside an if or ifnot block
     end
 
   fun tag _parse_elseif_stmt(
-    open: Array[((_IfNode | _IfNotNode | _LoopNode | _IfElse | _BlockNode), Array[_Part], Bool)],
+    open: Array[((_IfNode | _IfNotNode | _LoopNode | _IfElse | _IfNotElse | _BlockNode), Array[_Part], Bool)],
     else_if: _ElseIfNode
   ): Array[_Part]? =>
     (let stmt, let if_body, _) = open.pop()?
@@ -518,8 +520,7 @@ class val Template
       else_if_body
     | let ifnot: _IfNotNode =>
       let else_body = Array[_Part]
-      open.push(
-        (_IfElse(ifnot.value, if_body where negated' = true), else_body, true))
+      open.push((_IfNotElse(ifnot.value, if_body), else_body, true))
       let else_if_body = Array[_Part]
       open.push((_IfNode(else_if.value), else_if_body, false))
       else_if_body
@@ -560,12 +561,12 @@ class val Template
         | None => return None
         end
 
-      if block.is_comment then
+      match block.kind
+      | _CommentBlock =>
         search_from = block.end_pos + 2
         continue
+      | _RawBlock => return None
       end
-
-      if block.is_raw then return None end
 
       match _StmtParser.parse(block.stmt_source)?
       | let ext: _ExtendsNode => return ext.name
@@ -685,7 +686,7 @@ class val Template
       end_pos,
       left_trim,
       right_trim,
-      is_comment)
+      if is_comment then _CommentBlock else _RegularBlock end)
 
   fun tag _is_comment_open(source: String, start_pos: ISize): Bool =>
     """
@@ -793,7 +794,7 @@ class val Template
   fun tag _scan_raw_block(source: String, start_pos: ISize): _BlockScan? =>
     """
     Scan a `{{raw}}...{{end}}` raw block starting at `start_pos`. Returns a
-    `_BlockScan` with `is_raw = true` whose `stmt_source` is the literal
+    `_BlockScan` with `kind = _RawBlock` whose `stmt_source` is the literal
     content between the raw open tag and the matching `{{end}}`.
     """
     // Find closing }} of the {{raw}} tag
@@ -835,8 +836,7 @@ class val Template
       end_close,
       outer_left_trim,
       outer_right_trim,
-      false,
-      true)
+      _RawBlock)
 
   fun tag _find_close_delim(source: String, from: ISize): ISize? =>
     """
