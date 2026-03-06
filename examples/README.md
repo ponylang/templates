@@ -33,3 +33,7 @@ Defines a base HTML layout with `{{ block head }}` and `{{ block content }}` sec
 ## [trim-example](trim-example/)
 
 Uses `{{-` and `-}}` trim markers to strip whitespace around tags. Shows how selective trimming produces clean, indentation-sensitive output (like YAML service lists) without unwanted blank lines from control flow tags.
+
+## [html-escaping-example](html-escaping-example/)
+
+Uses `HtmlTemplate` for automatic context-aware HTML escaping. Shows how variable output is escaped differently depending on HTML position (text content, URL attributes, etc.) and how to bypass escaping for trusted content with `TemplateValue.unescaped` and `TemplateValues.unescaped`.

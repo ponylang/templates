@@ -1,19 +1,19 @@
 primitive _HtmlEscape
-  fun for_context(context: _HtmlContext, raw: String): String =>
+  fun for_context(context: HtmlContext, raw: String): String =>
     """
     Apply context-appropriate escaping to the raw string.
     """
     match context
-    | _CtxText => html_text(raw)
-    | _CtxHtmlAttr => html_attr(raw)
-    | _CtxUrlAttr => url_attr(raw)
-    | _CtxJsAttr => js_string(raw)
-    | _CtxCssAttr => css_value(raw)
-    | _CtxScript => js_string(raw)
-    | _CtxStyle => css_value(raw)
-    | _CtxComment => comment(raw)
-    | _CtxRcdata => rcdata(raw)
-    | _CtxError => raw
+    | CtxText => html_text(raw)
+    | CtxHtmlAttr => html_attr(raw)
+    | CtxUrlAttr => url_attr(raw)
+    | CtxJsAttr => js_string(raw)
+    | CtxCssAttr => css_value(raw)
+    | CtxScript => js_string(raw)
+    | CtxStyle => css_value(raw)
+    | CtxComment => comment(raw)
+    | CtxRcdata => rcdata(raw)
+    | CtxError => raw
     end
 
   fun html_text(raw: String): String val =>
@@ -201,28 +201,28 @@ primitive _HtmlEscape
     end
 
 
-interface val _RenderableValue
+interface val RenderableValue
   """
   Determines how a template value is rendered within an HTML context.
   The renderer passes the current HTML context and the raw string value;
   the implementation decides whether and how to escape.
   """
-  fun val render(context: _HtmlContext, raw: String): String
+  fun val render(context: HtmlContext, raw: String): String
 
 
-primitive _HtmlEscapingRenderer is _RenderableValue
+primitive _HtmlEscapingRenderer is RenderableValue
   """
   Applies context-appropriate HTML escaping. This is the default renderer
   for template values used with `HtmlTemplate`.
   """
-  fun val render(context: _HtmlContext, raw: String): String =>
+  fun val render(context: HtmlContext, raw: String): String =>
     _HtmlEscape.for_context(context, raw)
 
 
-primitive _NoEscapeRenderer is _RenderableValue
+primitive _NoEscapeRenderer is RenderableValue
   """
   Returns content unchanged, bypassing auto-escaping. Used for values
   explicitly marked as unescaped via `TemplateValue.unescaped`.
   """
-  fun val render(context: _HtmlContext, raw: String): String =>
+  fun val render(context: HtmlContext, raw: String): String =>
     raw
