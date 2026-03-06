@@ -16,6 +16,7 @@ All notable changes to this project will be documented in this file. This projec
 - Add default values for missing variables ([PR #52](https://github.com/ponylang/templates/pull/52))
 - Add default values for missing variables ([PR #52](https://github.com/ponylang/templates/pull/52))
 - Add trim syntax for whitespace control ([PR #53](https://github.com/ponylang/templates/pull/53))
+- Add template comments ([PR #59](https://github.com/ponylang/templates/pull/59))
 
 ### Changed
 
