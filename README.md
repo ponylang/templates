@@ -1,6 +1,6 @@
 # templates
 
-A template engine for [Pony](https://www.ponylang.io/) with optional HTML-aware contextual auto-escaping.
+A template engine for Pony with optional HTML-aware contextual auto-escaping.
 
 ## Status
 
