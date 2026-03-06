@@ -18,6 +18,7 @@ All notable changes to this project will be documented in this file. This projec
 - Add trim syntax for whitespace control ([PR #53](https://github.com/ponylang/templates/pull/53))
 - Add template comments ([PR #59](https://github.com/ponylang/templates/pull/59))
 - Add raw / literal blocks ([PR #62](https://github.com/ponylang/templates/pull/62))
+- Add HTML-aware template engine with contextual auto-escaping ([PR #68](https://github.com/ponylang/templates/pull/68))
 
 ### Changed
 
