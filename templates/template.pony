@@ -36,6 +36,12 @@ blocks. Supported block types:
   or both can be used independently: `{{- x -}}`. Whitespace includes spaces,
   tabs, and newlines. Useful for generating indentation-sensitive output like
   YAML without unwanted blank lines from control flow tags.
+* **Raw / literal blocks**: `{{raw}}...{{end}}` emits everything between the
+  tags as literal text, without interpreting `{{ }}` sequences. Useful when the
+  template output itself contains delimiter syntax (e.g., generating Mustache
+  templates or documentation about this library). Trim markers work on both tags:
+  `{{- raw -}}...{{- end -}}`. The first `{{ end }}` closes the raw block, so
+  literal `{{ end }}` cannot appear inside raw content.
 * **Comments**: `{{! ... }}` is ignored during rendering. Everything between `!`
   and `}}` is discarded. Comments can appear anywhere a normal block can appear,
   and trim markers work as expected: `{{!- comment -}}`.
@@ -267,6 +273,7 @@ class box _BlockScan
   let left_trim: Bool
   let right_trim: Bool
   let is_comment: Bool
+  let is_raw: Bool
 
   new box create(
     stmt_source': String,
@@ -274,7 +281,8 @@ class box _BlockScan
     end_pos': ISize,
     left_trim': Bool,
     right_trim': Bool,
-    is_comment': Bool
+    is_comment': Bool,
+    is_raw': Bool = false
   ) =>
     stmt_source = stmt_source'
     start_pos = start_pos'
@@ -282,6 +290,7 @@ class box _BlockScan
     left_trim = left_trim'
     right_trim = right_trim'
     is_comment = is_comment'
+    is_raw = is_raw'
 
 
 class val Template
@@ -314,8 +323,9 @@ class val Template
     var trim_next_literal: Bool = false
     var prev_end: ISize = 0
     while prev_end < source.size().isize() do
+      let scan_result = _scan_next_block(source, prev_end)?
       let block =
-        match _scan_next_block(source, prev_end)
+        match scan_result
         | let b: _BlockScan => b
         | None => break
         end
@@ -331,6 +341,16 @@ class val Template
       trim_next_literal = block.right_trim
 
       if block.is_comment then
+        prev_end = block.end_pos + 2
+        continue
+      end
+
+      if block.is_raw then
+        let raw_content = block.stmt_source
+        if raw_content.size() > 0 then
+          current_parts.push((_Literal, raw_content))
+        end
+        first_stmt = false
         prev_end = block.end_pos + 2
         continue
       end
@@ -533,8 +553,9 @@ class val Template
   fun tag _check_extends(source: String): (String | None)? =>
     var search_from: ISize = 0
     while search_from < source.size().isize() do
+      let scan_result' = _scan_next_block(source, search_from)?
       let block =
-        match _scan_next_block(source, search_from)
+        match scan_result'
         | let b: _BlockScan => b
         | None => return None
         end
@@ -543,6 +564,8 @@ class val Template
         search_from = block.end_pos + 2
         continue
       end
+
+      if block.is_raw then return None end
 
       match _StmtParser.parse(block.stmt_source)?
       | let ext: _ExtendsNode => return ext.name
@@ -617,17 +640,21 @@ class val Template
   fun tag _scan_next_block(
     source: String,
     from: ISize
-  ): (_BlockScan | None) =>
+  ): (_BlockScan | None)? =>
     """
     Scan for the next `{{ }}` block starting from `from`. Returns a
     `_BlockScan` with the extracted statement content and metadata, or
     `None` if no more blocks are found (missing `{{` or `}}`).
+    Errors on unclosed raw blocks.
     """
     let start_pos =
       try source.find("{{" where offset = from)?
       else return None
       end
     let is_comment = _is_comment_open(source, start_pos)
+    if (not is_comment) and _is_raw_open(source, start_pos) then
+      return _scan_raw_block(source, start_pos)?
+    end
     // Comments don't use quote-aware scanning — a `"` inside a comment
     // body is literal text, not a string delimiter.
     let end_pos =
@@ -681,6 +708,135 @@ class val Template
       end
     end
     false
+
+  fun tag _is_raw_open(source: String, start_pos: ISize): Bool =>
+    """
+    Check whether the `{{ }}` block starting at `start_pos` is a raw block
+    opener. Peeks past `{{`, optional `-` trim marker, and optional whitespace
+    to see if the next content is the `raw` keyword followed by a word
+    boundary (space, tab, `-`, or `}`).
+    """
+    var i = (start_pos + 2).usize()
+    let limit = source.size()
+    // Skip optional trim marker
+    try if source(i)? == '-' then i = i + 1 end end
+    // Skip whitespace
+    while i < limit do
+      try
+        let c = source(i)?
+        if (c == ' ') or (c == '\t') then i = i + 1
+        else break
+        end
+      else return false
+      end
+    end
+    // Check for "raw" keyword
+    if (i + 3) > limit then return false end
+    try
+      if (source(i)? != 'r')
+        or (source(i + 1)? != 'a')
+        or (source(i + 2)? != 'w')
+      then
+        return false
+      end
+    else return false
+    end
+    // Check word boundary: next char must be space, tab, -, or }
+    if (i + 3) == limit then return false end
+    try
+      let c = source(i + 3)?
+      (c == ' ') or (c == '\t') or (c == '-') or (c == '}')
+    else false
+    end
+
+  fun tag _find_raw_end(
+    source: String,
+    from: ISize
+  ): (ISize, ISize, Bool, Bool)? =>
+    """
+    Scan forward from `from` looking for `{{ end }}` (with optional trim/
+    whitespace). Returns `(start_pos, end_pos, left_trim, right_trim)` of the
+    closing `{{end}}` tag, or errors if not found.
+    """
+    var search = from
+    while search < source.size().isize() do
+      let open_pos = source.find("{{" where offset = search)?
+      let close_pos = source.find("}}" where offset = open_pos + 2)?
+
+      // Extract content between {{ and }}
+      let lt =
+        try source((open_pos + 2).usize())? == '-'
+        else false
+        end
+      let content_start: ISize =
+        if lt then open_pos + 3 else open_pos + 2 end
+      let rt =
+        try
+          (close_pos > content_start)
+            and (source((close_pos - 1).usize())? == '-')
+        else false
+        end
+      let content_end: ISize =
+        if rt then close_pos - 1 else close_pos end
+
+      let inner = source.substring(content_start, content_end)
+      inner.strip()
+
+      if inner == "end" then
+        return (open_pos, close_pos, lt, rt)
+      end
+
+      search = close_pos + 2
+    end
+    error
+
+  fun tag _scan_raw_block(source: String, start_pos: ISize): _BlockScan? =>
+    """
+    Scan a `{{raw}}...{{end}}` raw block starting at `start_pos`. Returns a
+    `_BlockScan` with `is_raw = true` whose `stmt_source` is the literal
+    content between the raw open tag and the matching `{{end}}`.
+    """
+    // Find closing }} of the {{raw}} tag
+    let raw_close =
+      try source.find("}}" where offset = start_pos + 2)?
+      else error
+      end
+
+    // Determine trim flags on raw open tag
+    let outer_left_trim =
+      try source((start_pos + 2).usize())? == '-'
+      else false
+      end
+    let raw_stmt_start: ISize =
+      if outer_left_trim then start_pos + 3 else start_pos + 2 end
+    let raw_right_trim =
+      try
+        (raw_close > raw_stmt_start)
+          and (source((raw_close - 1).usize())? == '-')
+      else false
+      end
+
+    // Find matching {{end}}
+    let content_start = raw_close + 2
+    (let end_open, let end_close, let end_left_trim, let outer_right_trim) =
+      _find_raw_end(source, content_start)?
+
+    // Extract raw content between raw close and end open
+    var content = source.substring(content_start, end_open)
+
+    // Apply internal trim: raw open's right-trim → lstrip content,
+    // end tag's left-trim → rstrip content
+    if raw_right_trim then content.lstrip() end
+    if end_left_trim then content.rstrip() end
+
+    _BlockScan(
+      consume content,
+      start_pos,
+      end_close,
+      outer_left_trim,
+      outer_right_trim,
+      false,
+      true)
 
   fun tag _find_close_delim(source: String, from: ISize): ISize? =>
     """
