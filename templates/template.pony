@@ -14,11 +14,13 @@ blocks. Supported block types:
 * **Loops**: `{{ for item in items }}...{{ end }}`
 * **Filters**: `{{ name | upper }}` pipes a value through one or more
   filters. Filters are chained left-to-right:
-  `{{ name | trim | upper | default("ANON") }}`. Seven built-in filters are
-  available without registration: `upper`, `lower`, `trim`, `capitalize`,
-  `title`, `default("fallback")`, and `replace("old", "new")`. Custom filters can
-  be registered via `TemplateContext`. Filter arguments can be string
-  literals (`"hello"`) or template variables (`varname`).
+  `{{ name | trim | upper | default("ANON") }}`. The pipe source can be a
+  template variable or a string literal: `{{ "hello" | upper }}`. Seven
+  built-in filters are available without registration: `upper`, `lower`,
+  `trim`, `capitalize`, `title`, `default("fallback")`, and
+  `replace("old", "new")`. Custom filters can be registered via
+  `TemplateContext`. Filter arguments can be string literals (`"hello"`) or
+  template variables (`varname`).
 * **Includes**: `{{ include "name" }}` inlines a named partial registered via
   `TemplateContext`. Partials share the same variable scope and can contain
   any block type. Circular includes are detected at parse time.
@@ -48,15 +50,16 @@ type _ResolvedArg is (String | _PropNode)
 
 class _Pipe
   """
-  A fully resolved pipe expression ready for rendering. The source property
-  is piped through each filter in order. Each filter has been validated at
-  parse time for existence and correct arity.
+  A fully resolved pipe expression ready for rendering. The source — either a
+  property reference or a string literal — is piped through each filter in
+  order. Each filter has been validated at parse time for existence and correct
+  arity.
   """
-  let source: _PropNode
+  let source: (_PropNode | String)
   let filters: Array[(AnyFilter, Array[_ResolvedArg] box)] box
 
   new box create(
-    source': _PropNode,
+    source': (_PropNode | String),
     filters': Array[(AnyFilter, Array[_ResolvedArg] box)] box
   ) =>
     source = source'
@@ -638,8 +641,11 @@ class val Template
       match part
       | (_Literal, let value: String) => result = result + value
       | let pipe: _Pipe box =>
-        var current: String = try values._lookup(pipe.source)?.string()?
-        else "" end
+        var current: String = match pipe.source
+        | let s: String => s
+        | let p: _PropNode =>
+          try values._lookup(p)?.string()? else "" end
+        end
         for (filter, args) in pipe.filters.values() do
           // Resolve arguments
           match filter
