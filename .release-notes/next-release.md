@@ -162,7 +162,7 @@ The right-trim on the `for` tag strips the newline that would otherwise appear b
 
 ## Replace function calls with filter pipes
 
-Function calls (`{{ fn(arg) }}`) have been replaced by a filter/pipe system. Values are now transformed by piping them through one or more filters: `{{ value | filter1 | filter2 }}`.
+Function calls (`{{ fn(arg) }}`) have been replaced by a filter/pipe system. Values are now transformed by piping them through one or more filters: `{{ value | filter1 | filter2 }}`. The pipe source can be a template variable or a string literal: `{{ "hello" | upper }}`.
 
 Seven built-in filters are available in all templates without registration:
 
@@ -203,6 +203,9 @@ Filters can be chained left-to-right and accept string literal or variable argum
 
 ```pony
 Template.parse("{{ name | default(\"anon\") | upper }}")?
+
+// String literal as pipe source — no variable needed
+Template.parse("{{ \"hello world\" | upper }}")?
 ```
 
 The `TemplateContext` constructor's `functions` parameter has been replaced by `filters`. Custom filters implement `Filter` (0 extra args), `Filter2` (1 extra arg), or `Filter3` (2 extra args):
