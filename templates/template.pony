@@ -36,6 +36,9 @@ blocks. Supported block types:
   or both can be used independently: `{{- x -}}`. Whitespace includes spaces,
   tabs, and newlines. Useful for generating indentation-sensitive output like
   YAML without unwanted blank lines from control flow tags.
+* **Comments**: `{{! ... }}` is ignored during rendering. Everything between `!`
+  and `}}` is discarded. Comments can appear anywhere a normal block can appear,
+  and trim markers work as expected: `{{!- comment -}}`.
 """
 
 use "collections"
@@ -285,8 +288,15 @@ class val Template
       let start_pos =
         try source.find("{{" where offset = prev_end)?
         else break end
+      // Comments don't use quote-aware scanning — a `"` inside a comment
+      // body is literal text, not a string delimiter.
       let end_pos =
-        try _find_close_delim(source, start_pos + 2)?
+        try
+          if _is_comment_open(source, start_pos) then
+            source.find("}}" where offset = start_pos + 2)?
+          else
+            _find_close_delim(source, start_pos + 2)?
+          end
         else break end
 
       // Detect {{- (left trim) and -}} (right trim)
@@ -318,6 +328,16 @@ class val Template
       trim_next_literal = right_trim
 
       let stmt_source: String = source.substring(stmt_start, stmt_end)
+
+      // Skip comment blocks: {{! ... }}
+      let stripped_stmt: String val = stmt_source.clone().>strip()
+      if (stripped_stmt.size() > 0) and
+        try stripped_stmt(0)? == '!' else false end
+      then
+        prev_end = end_pos + 2
+        continue
+      end
+
       match _StmtParser.parse(stmt_source)?
       | _EndNode => current_parts = _parse_end(open, parts)?
       | _ElseNode => current_parts = _parse_else(open)?
@@ -514,32 +534,51 @@ class val Template
     end
 
   fun tag _check_extends(source: String): (String | None)? =>
-    let start_pos =
-      try source.find("{{")?
+    var search_from: ISize = 0
+    while search_from < source.size().isize() do
+      let start_pos =
+        try source.find("{{" where offset = search_from)?
+        else return None
+        end
+      let end_pos =
+        try
+          if _is_comment_open(source, start_pos) then
+            source.find("}}" where offset = start_pos + 2)?
+          else
+            _find_close_delim(source, start_pos + 2)?
+          end
+        else return None
+        end
+      let left_trim =
+        try source((start_pos + 2).usize())? == '-'
+        else false
+        end
+      let stmt_start: ISize =
+        if left_trim then start_pos + 3 else start_pos + 2 end
+      let right_trim =
+        try
+          (end_pos > stmt_start) and (source((end_pos - 1).usize())? == '-')
+        else false
+        end
+      let stmt_end: ISize =
+        if right_trim then end_pos - 1 else end_pos end
+      let stmt_source: String val = source.substring(stmt_start, stmt_end)
+
+      // Skip comment blocks
+      let stripped_stmt: String val = stmt_source.clone().>strip()
+      if (stripped_stmt.size() > 0) and
+        try stripped_stmt(0)? == '!' else false end
+      then
+        search_from = end_pos + 2
+        continue
+      end
+
+      match _StmtParser.parse(stmt_source)?
+      | let ext: _ExtendsNode => return ext.name
       else return None
       end
-    let end_pos =
-      try _find_close_delim(source, start_pos + 2)?
-      else return None
-      end
-    let left_trim =
-      try source((start_pos + 2).usize())? == '-'
-      else false
-      end
-    let stmt_start: ISize =
-      if left_trim then start_pos + 3 else start_pos + 2 end
-    let right_trim =
-      try
-        (end_pos > stmt_start) and (source((end_pos - 1).usize())? == '-')
-      else false
-      end
-    let stmt_end: ISize =
-      if right_trim then end_pos - 1 else end_pos end
-    let stmt_source: String val = source.substring(stmt_start, stmt_end)
-    match _StmtParser.parse(stmt_source)?
-    | let ext: _ExtendsNode => ext.name
-    else None
     end
+    None
 
   fun tag _extract_blocks(
     parts: Array[_Part] box
@@ -603,6 +642,28 @@ class val Template
       end
     end
     result
+
+  fun tag _is_comment_open(source: String, start_pos: ISize): Bool =>
+    """
+    Check whether the `{{ }}` block starting at `start_pos` is a comment.
+    Peeks past the opening `{{` and optional `-` trim marker to see if the
+    next non-whitespace character is `!`.
+    """
+    var i = (start_pos + 2).usize()
+    let limit = source.size()
+    // Skip optional trim marker
+    try if source(i)? == '-' then i = i + 1 end end
+    // Skip whitespace
+    while i < limit do
+      try
+        let c = source(i)?
+        if (c == ' ') or (c == '\t') then i = i + 1
+        else return c == '!'
+        end
+      else return false
+      end
+    end
+    false
 
   fun tag _find_close_delim(source: String, from: ISize): ISize? =>
     """
