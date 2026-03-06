@@ -1,17 +1,38 @@
-primitive _CtxText
-primitive _CtxHtmlAttr
-primitive _CtxUrlAttr
-primitive _CtxJsAttr
-primitive _CtxCssAttr
-primitive _CtxScript
-primitive _CtxStyle
-primitive _CtxComment
-primitive _CtxRcdata
-primitive _CtxError
+primitive CtxText
+  """Normal text content between HTML tags."""
 
-type _HtmlContext is
-  ( _CtxText | _CtxHtmlAttr | _CtxUrlAttr | _CtxJsAttr | _CtxCssAttr
-  | _CtxScript | _CtxStyle | _CtxComment | _CtxRcdata | _CtxError )
+primitive CtxHtmlAttr
+  """Inside a quoted HTML attribute value (non-URL, non-event, non-style)."""
+
+primitive CtxUrlAttr
+  """Inside a quoted URL attribute value (`href`, `src`, `action`, etc.)."""
+
+primitive CtxJsAttr
+  """Inside a quoted JavaScript event-handler attribute (`onclick`, etc.)."""
+
+primitive CtxCssAttr
+  """Inside a quoted `style` attribute value."""
+
+primitive CtxScript
+  """Inside a `<script>` element body."""
+
+primitive CtxStyle
+  """Inside a `<style>` element body."""
+
+primitive CtxComment
+  """Inside an HTML comment (`<!-- ... -->`)."""
+
+primitive CtxRcdata
+  """Inside a raw-text element (`<title>`, `<textarea>`)."""
+
+primitive CtxError
+  """Invalid insertion point (tag name, unquoted attribute, etc.)."""
+
+// The HTML context at a variable insertion point, used by `RenderableValue`
+// implementations to select the appropriate escaping strategy.
+type HtmlContext is
+  ( CtxText | CtxHtmlAttr | CtxUrlAttr | CtxJsAttr | CtxCssAttr
+  | CtxScript | CtxStyle | CtxComment | CtxRcdata | CtxError )
 
 
 primitive _StateText
@@ -252,30 +273,30 @@ class _HtmlContextTracker
     end
     false
 
-  fun context(): _HtmlContext =>
+  fun context(): HtmlContext =>
     """
     Return the current escaping context based on state and attribute name.
     """
     match _state
-    | _StateText => _CtxText
+    | _StateText => CtxText
     | _StateDqAttrVal => _attr_context()
     | _StateSqAttrVal => _attr_context()
-    | _StateUnqAttrVal => _CtxError
-    | _StateScript => _CtxScript
-    | _StateStyle => _CtxStyle
-    | _StateComment => _CtxComment
-    | _StateRcdata => _CtxRcdata
-    | _StateTag => _CtxError
-    | _StateAttrName => _CtxError
-    | _StateAfterAttrName => _CtxError
-    | _StateBeforeAttrVal => _CtxError
+    | _StateUnqAttrVal => CtxError
+    | _StateScript => CtxScript
+    | _StateStyle => CtxStyle
+    | _StateComment => CtxComment
+    | _StateRcdata => CtxRcdata
+    | _StateTag => CtxError
+    | _StateAttrName => CtxError
+    | _StateAfterAttrName => CtxError
+    | _StateBeforeAttrVal => CtxError
     end
 
-  fun _attr_context(): _HtmlContext =>
-    if _is_url_attr() then _CtxUrlAttr
-    elseif _is_js_attr() then _CtxJsAttr
-    elseif _is_css_attr() then _CtxCssAttr
-    else _CtxHtmlAttr
+  fun _attr_context(): HtmlContext =>
+    if _is_url_attr() then CtxUrlAttr
+    elseif _is_js_attr() then CtxJsAttr
+    elseif _is_css_attr() then CtxCssAttr
+    else CtxHtmlAttr
     end
 
   fun _is_url_attr(): Bool =>

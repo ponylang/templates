@@ -246,6 +246,23 @@ actor \nodoc\ Main is TestList
     test(_TestHtmlEscapingRenderer)
     test(_TestNoEscapeRenderer)
 
+    // HtmlTemplate tests
+    test(_TestHtmlTemplateBasicEscaping)
+    test(_TestHtmlTemplateAttrEscaping)
+    test(_TestHtmlTemplateUrlEscaping)
+    test(_TestHtmlTemplateUnescaped)
+    test(_TestHtmlTemplateUnescapedConvenience)
+    test(_TestHtmlTemplatePipeEscaping)
+    test(_TestHtmlTemplateIfBranchConsistency)
+    test(_TestHtmlTemplateLoopPreservesContext)
+    test(_TestHtmlTemplateErrorInTagName)
+    test(_TestHtmlTemplateErrorUnquotedAttr)
+    test(_TestHtmlTemplateScriptContext)
+    test(_TestHtmlTemplateCommentContext)
+    test(_TestHtmlTemplateCssAttrContext)
+    test(_TestHtmlTemplateRcdataContext)
+    test(Property1UnitTest[String](_PropHtmlTemplateEscapesInText))
+
 
 // ---------------------------------------------------------------------------
 // Generators (Step 2)
@@ -3423,9 +3440,9 @@ class \nodoc\ iso _TestContextText is UnitTest
 
   fun apply(h: TestHelper) =>
     let t = _HtmlContextTracker
-    h.assert_is[_HtmlContext](_CtxText, t.context())
+    h.assert_is[HtmlContext](CtxText, t.context())
     t.feed("hello world")
-    h.assert_is[_HtmlContext](_CtxText, t.context())
+    h.assert_is[HtmlContext](CtxText, t.context())
 
 class \nodoc\ iso _TestContextTag is UnitTest
   fun name(): String => "HtmlContext: inside tag is error"
@@ -3433,7 +3450,7 @@ class \nodoc\ iso _TestContextTag is UnitTest
   fun apply(h: TestHelper) =>
     let t = _HtmlContextTracker
     t.feed("<div")
-    h.assert_is[_HtmlContext](_CtxError, t.context())
+    h.assert_is[HtmlContext](CtxError, t.context())
 
 class \nodoc\ iso _TestContextAttrDq is UnitTest
   fun name(): String => "HtmlContext: double-quoted attr value"
@@ -3441,10 +3458,10 @@ class \nodoc\ iso _TestContextAttrDq is UnitTest
   fun apply(h: TestHelper) =>
     let t = _HtmlContextTracker
     t.feed("<div class=\"")
-    h.assert_is[_HtmlContext](_CtxHtmlAttr, t.context())
+    h.assert_is[HtmlContext](CtxHtmlAttr, t.context())
     t.feed("foo\"")
     // After closing quote, back in tag
-    h.assert_is[_HtmlContext](_CtxError, t.context())
+    h.assert_is[HtmlContext](CtxError, t.context())
 
 class \nodoc\ iso _TestContextAttrSq is UnitTest
   fun name(): String => "HtmlContext: single-quoted attr value"
@@ -3452,7 +3469,7 @@ class \nodoc\ iso _TestContextAttrSq is UnitTest
   fun apply(h: TestHelper) =>
     let t = _HtmlContextTracker
     t.feed("<div class='")
-    h.assert_is[_HtmlContext](_CtxHtmlAttr, t.context())
+    h.assert_is[HtmlContext](CtxHtmlAttr, t.context())
 
 class \nodoc\ iso _TestContextUnqAttrError is UnitTest
   fun name(): String => "HtmlContext: unquoted attr value is error"
@@ -3461,10 +3478,10 @@ class \nodoc\ iso _TestContextUnqAttrError is UnitTest
     let t = _HtmlContextTracker
     t.feed("<div class=")
     // Before attr val, still error
-    h.assert_is[_HtmlContext](_CtxError, t.context())
+    h.assert_is[HtmlContext](CtxError, t.context())
     t.feed("x")
     // In unquoted attr val — error context
-    h.assert_is[_HtmlContext](_CtxError, t.context())
+    h.assert_is[HtmlContext](CtxError, t.context())
 
 class \nodoc\ iso _TestContextComment is UnitTest
   fun name(): String => "HtmlContext: HTML comment"
@@ -3473,10 +3490,10 @@ class \nodoc\ iso _TestContextComment is UnitTest
     let t = _HtmlContextTracker
     t.feed("<!--")
     t.feed_close_tag("<!--")
-    h.assert_is[_HtmlContext](_CtxComment, t.context())
+    h.assert_is[HtmlContext](CtxComment, t.context())
     t.feed(" comment text -->")
     t.feed_close_tag(" comment text -->")
-    h.assert_is[_HtmlContext](_CtxText, t.context())
+    h.assert_is[HtmlContext](CtxText, t.context())
 
 class \nodoc\ iso _TestContextScript is UnitTest
   fun name(): String => "HtmlContext: script tag"
@@ -3484,14 +3501,14 @@ class \nodoc\ iso _TestContextScript is UnitTest
   fun apply(h: TestHelper) =>
     let t = _HtmlContextTracker
     t.feed("<script>")
-    h.assert_is[_HtmlContext](_CtxScript, t.context())
+    h.assert_is[HtmlContext](CtxScript, t.context())
     t.feed("var x = 1;")
     t.feed_close_tag("var x = 1;")
-    h.assert_is[_HtmlContext](_CtxScript, t.context())
+    h.assert_is[HtmlContext](CtxScript, t.context())
     let closing = "</script>"
     t.feed(closing)
     t.feed_close_tag(closing)
-    h.assert_is[_HtmlContext](_CtxText, t.context())
+    h.assert_is[HtmlContext](CtxText, t.context())
 
 class \nodoc\ iso _TestContextStyle is UnitTest
   fun name(): String => "HtmlContext: style tag"
@@ -3499,11 +3516,11 @@ class \nodoc\ iso _TestContextStyle is UnitTest
   fun apply(h: TestHelper) =>
     let t = _HtmlContextTracker
     t.feed("<style>")
-    h.assert_is[_HtmlContext](_CtxStyle, t.context())
+    h.assert_is[HtmlContext](CtxStyle, t.context())
     let closing = "</style>"
     t.feed(closing)
     t.feed_close_tag(closing)
-    h.assert_is[_HtmlContext](_CtxText, t.context())
+    h.assert_is[HtmlContext](CtxText, t.context())
 
 class \nodoc\ iso _TestContextRcdata is UnitTest
   fun name(): String => "HtmlContext: title/textarea RCDATA"
@@ -3511,11 +3528,11 @@ class \nodoc\ iso _TestContextRcdata is UnitTest
   fun apply(h: TestHelper) =>
     let t = _HtmlContextTracker
     t.feed("<title>")
-    h.assert_is[_HtmlContext](_CtxRcdata, t.context())
+    h.assert_is[HtmlContext](CtxRcdata, t.context())
     let closing = "</title>"
     t.feed(closing)
     t.feed_close_tag(closing)
-    h.assert_is[_HtmlContext](_CtxText, t.context())
+    h.assert_is[HtmlContext](CtxText, t.context())
 
 class \nodoc\ iso _TestContextUrlAttr is UnitTest
   fun name(): String => "HtmlContext: URL attributes"
@@ -3523,7 +3540,7 @@ class \nodoc\ iso _TestContextUrlAttr is UnitTest
   fun apply(h: TestHelper) =>
     let t = _HtmlContextTracker
     t.feed("<a href=\"")
-    h.assert_is[_HtmlContext](_CtxUrlAttr, t.context())
+    h.assert_is[HtmlContext](CtxUrlAttr, t.context())
 
 class \nodoc\ iso _TestContextJsAttr is UnitTest
   fun name(): String => "HtmlContext: JS event attributes"
@@ -3531,7 +3548,7 @@ class \nodoc\ iso _TestContextJsAttr is UnitTest
   fun apply(h: TestHelper) =>
     let t = _HtmlContextTracker
     t.feed("<div onclick=\"")
-    h.assert_is[_HtmlContext](_CtxJsAttr, t.context())
+    h.assert_is[HtmlContext](CtxJsAttr, t.context())
 
 class \nodoc\ iso _TestContextCssAttr is UnitTest
   fun name(): String => "HtmlContext: style attribute"
@@ -3539,7 +3556,7 @@ class \nodoc\ iso _TestContextCssAttr is UnitTest
   fun apply(h: TestHelper) =>
     let t = _HtmlContextTracker
     t.feed("<div style=\"")
-    h.assert_is[_HtmlContext](_CtxCssAttr, t.context())
+    h.assert_is[HtmlContext](CtxCssAttr, t.context())
 
 class \nodoc\ iso _TestContextClone is UnitTest
   fun name(): String => "HtmlContext: clone preserves state"
@@ -3552,7 +3569,7 @@ class \nodoc\ iso _TestContextClone is UnitTest
     t.feed("foo\"")
     // Original advanced, clone stayed
     h.assert_false(t.eq(t2))
-    h.assert_is[_HtmlContext](_CtxHtmlAttr, t2.context())
+    h.assert_is[HtmlContext](CtxHtmlAttr, t2.context())
 
 class \nodoc\ iso _TestContextBranchConsistency is UnitTest
   fun name(): String => "HtmlContext: branch consistency check"
@@ -3580,19 +3597,19 @@ class \nodoc\ iso _TestContextCaseInsensitiveTags is UnitTest
   fun apply(h: TestHelper) =>
     let t1 = _HtmlContextTracker
     t1.feed("<SCRIPT>")
-    h.assert_is[_HtmlContext](_CtxScript, t1.context())
+    h.assert_is[HtmlContext](CtxScript, t1.context())
 
     let t2 = _HtmlContextTracker
     t2.feed("<Script>")
-    h.assert_is[_HtmlContext](_CtxScript, t2.context())
+    h.assert_is[HtmlContext](CtxScript, t2.context())
 
     let t3 = _HtmlContextTracker
     t3.feed("<STYLE>")
-    h.assert_is[_HtmlContext](_CtxStyle, t3.context())
+    h.assert_is[HtmlContext](CtxStyle, t3.context())
 
     let t4 = _HtmlContextTracker
     t4.feed("<TITLE>")
-    h.assert_is[_HtmlContext](_CtxRcdata, t4.context())
+    h.assert_is[HtmlContext](CtxRcdata, t4.context())
 
 class \nodoc\ iso _TestContextScriptWithAttrs is UnitTest
   fun name(): String => "HtmlContext: script tag with attributes"
@@ -3600,7 +3617,7 @@ class \nodoc\ iso _TestContextScriptWithAttrs is UnitTest
   fun apply(h: TestHelper) =>
     let t = _HtmlContextTracker
     t.feed("<script type=\"text/javascript\">")
-    h.assert_is[_HtmlContext](_CtxScript, t.context())
+    h.assert_is[HtmlContext](CtxScript, t.context())
 
 class \nodoc\ iso _TestContextClosingTag is UnitTest
   fun name(): String => "HtmlContext: closing tag returns to text"
@@ -3608,7 +3625,7 @@ class \nodoc\ iso _TestContextClosingTag is UnitTest
   fun apply(h: TestHelper) =>
     let t = _HtmlContextTracker
     t.feed("<div>hello</div>")
-    h.assert_is[_HtmlContext](_CtxText, t.context())
+    h.assert_is[HtmlContext](CtxText, t.context())
 
 class \nodoc\ iso _TestContextCaseInsensitiveClose is UnitTest
   fun name(): String => "HtmlContext: case-insensitive closing tags"
@@ -3616,11 +3633,11 @@ class \nodoc\ iso _TestContextCaseInsensitiveClose is UnitTest
   fun apply(h: TestHelper) =>
     let t = _HtmlContextTracker
     t.feed("<script>")
-    h.assert_is[_HtmlContext](_CtxScript, t.context())
+    h.assert_is[HtmlContext](CtxScript, t.context())
     let closing = "</SCRIPT>"
     t.feed(closing)
     t.feed_close_tag(closing)
-    h.assert_is[_HtmlContext](_CtxText, t.context())
+    h.assert_is[HtmlContext](CtxText, t.context())
 
 class \nodoc\ iso _TestContextCloseTagWhitespace is UnitTest
   fun name(): String => "HtmlContext: closing tag with whitespace before >"
@@ -3632,7 +3649,7 @@ class \nodoc\ iso _TestContextCloseTagWhitespace is UnitTest
     let closing1 = "</script >"
     t1.feed(closing1)
     t1.feed_close_tag(closing1)
-    h.assert_is[_HtmlContext](_CtxText, t1.context())
+    h.assert_is[HtmlContext](CtxText, t1.context())
 
     // Multiple whitespace chars
     let t2 = _HtmlContextTracker
@@ -3640,7 +3657,7 @@ class \nodoc\ iso _TestContextCloseTagWhitespace is UnitTest
     let closing2 = "</style\t\n >"
     t2.feed(closing2)
     t2.feed_close_tag(closing2)
-    h.assert_is[_HtmlContext](_CtxText, t2.context())
+    h.assert_is[HtmlContext](CtxText, t2.context())
 
     // No whitespace still works
     let t3 = _HtmlContextTracker
@@ -3648,7 +3665,7 @@ class \nodoc\ iso _TestContextCloseTagWhitespace is UnitTest
     let closing3 = "</script>"
     t3.feed(closing3)
     t3.feed_close_tag(closing3)
-    h.assert_is[_HtmlContext](_CtxText, t3.context())
+    h.assert_is[HtmlContext](CtxText, t3.context())
 
 class \nodoc\ iso _PropContextTextRoundtrip is Property1[String]
   fun name(): String => "HtmlContext: text without < stays in text state"
@@ -3667,7 +3684,7 @@ class \nodoc\ iso _PropContextTextRoundtrip is Property1[String]
   fun property(arg1: String, h: PropertyHelper) =>
     let t = _HtmlContextTracker
     t.feed(arg1)
-    h.assert_is[_HtmlContext](_CtxText, t.context())
+    h.assert_is[HtmlContext](CtxText, t.context())
 
 
 // ---------------------------------------------------------------------------
@@ -3787,7 +3804,7 @@ class \nodoc\ iso _TestEscapeErrorContext is UnitTest
 
   fun apply(h: TestHelper) =>
     let raw = "<script>alert('xss')</script>"
-    h.assert_eq[String](raw, _HtmlEscape.for_context(_CtxError, raw))
+    h.assert_eq[String](raw, _HtmlEscape.for_context(CtxError, raw))
 
 class \nodoc\ iso _PropEscapeHtmlNoUnescapedChars is Property1[String]
   fun name(): String =>
@@ -3879,12 +3896,236 @@ class \nodoc\ iso _TestHtmlEscapingRenderer is UnitTest
   fun name(): String => "RenderableValue: HtmlEscapingRenderer escapes"
 
   fun apply(h: TestHelper) =>
-    let result = _HtmlEscapingRenderer.render(_CtxText, "<script>")
+    let result = _HtmlEscapingRenderer.render(CtxText, "<script>")
     h.assert_eq[String]("&lt;script&gt;", result)
 
 class \nodoc\ iso _TestNoEscapeRenderer is UnitTest
   fun name(): String => "RenderableValue: NoEscapeRenderer passes through"
 
   fun apply(h: TestHelper) =>
-    let result = _NoEscapeRenderer.render(_CtxText, "<script>")
+    let result = _NoEscapeRenderer.render(CtxText, "<script>")
     h.assert_eq[String]("<script>", result)
+
+
+// ---------------------------------------------------------------------------
+// HtmlTemplate tests
+// ---------------------------------------------------------------------------
+
+class \nodoc\ iso _TestHtmlTemplateBasicEscaping is UnitTest
+  fun name(): String => "HtmlTemplate: escapes variables in text context"
+
+  fun apply(h: TestHelper) =>
+    try
+      let t = HtmlTemplate.parse("<p>{{ name }}</p>")?
+      let v = TemplateValues
+      v("name") = "<script>alert('xss')</script>"
+      let result = t.render(v)?
+      h.assert_eq[String](
+        "<p>&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;</p>", result)
+    else
+      h.fail("unexpected error")
+    end
+
+class \nodoc\ iso _TestHtmlTemplateAttrEscaping is UnitTest
+  fun name(): String => "HtmlTemplate: escapes in attribute context"
+
+  fun apply(h: TestHelper) =>
+    try
+      let t = HtmlTemplate.parse("<div class=\"{{ cls }}\">hello</div>")?
+      let v = TemplateValues
+      v("cls") = "a\"b&c"
+      let result = t.render(v)?
+      h.assert_eq[String](
+        "<div class=\"a&#34;b&amp;c\">hello</div>", result)
+    else
+      h.fail("unexpected error")
+    end
+
+class \nodoc\ iso _TestHtmlTemplateUrlEscaping is UnitTest
+  fun name(): String => "HtmlTemplate: escapes in URL attribute context"
+
+  fun apply(h: TestHelper) =>
+    try
+      let t = HtmlTemplate.parse("<a href=\"{{ url }}\">link</a>")?
+      let v = TemplateValues
+      v("url") = "javascript:alert(1)"
+      let result = t.render(v)?
+      // Dangerous scheme should be replaced with #ZgotmplZ
+      h.assert_true(result.contains("#ZgotmplZ"))
+      h.assert_false(result.contains("javascript"))
+    else
+      h.fail("unexpected error")
+    end
+
+class \nodoc\ iso _TestHtmlTemplateUnescaped is UnitTest
+  fun name(): String => "HtmlTemplate: unescaped values bypass escaping"
+
+  fun apply(h: TestHelper) =>
+    try
+      let t = HtmlTemplate.parse("<p>{{ content }}</p>")?
+      let v = TemplateValues
+      v("content") = TemplateValue.unescaped("<em>bold</em>")
+      let result = t.render(v)?
+      h.assert_eq[String]("<p><em>bold</em></p>", result)
+    else
+      h.fail("unexpected error")
+    end
+
+class \nodoc\ iso _TestHtmlTemplateUnescapedConvenience is UnitTest
+  fun name(): String =>
+    "HtmlTemplate: TemplateValues.unescaped convenience method"
+
+  fun apply(h: TestHelper) =>
+    try
+      let t = HtmlTemplate.parse("<p>{{ content }}</p>")?
+      let v = TemplateValues
+      v.unescaped("content", "<em>bold</em>")
+      let result = t.render(v)?
+      h.assert_eq[String]("<p><em>bold</em></p>", result)
+    else
+      h.fail("unexpected error")
+    end
+
+class \nodoc\ iso _TestHtmlTemplatePipeEscaping is UnitTest
+  fun name(): String => "HtmlTemplate: pipe results are always escaped"
+
+  fun apply(h: TestHelper) =>
+    try
+      let t = HtmlTemplate.parse("<p>{{ name | upper }}</p>")?
+      let v = TemplateValues
+      v("name") = "<b>hi</b>"
+      let result = t.render(v)?
+      // Even after upper filter, output should be escaped
+      h.assert_true(result.contains("&lt;"))
+      h.assert_false(result.contains("<b>") or result.contains("<B>"))
+    else
+      h.fail("unexpected error")
+    end
+
+class \nodoc\ iso _TestHtmlTemplateIfBranchConsistency is UnitTest
+  fun name(): String =>
+    "HtmlTemplate: rejects inconsistent if/else branches"
+
+  fun apply(h: TestHelper) =>
+    // If-body opens a tag, else-body doesn't — inconsistent
+    try
+      HtmlTemplate.parse(
+        "{{ if x }}<div class=\"{{ else }}hello{{ end }}")?
+      h.fail("should have errored")
+    end
+
+class \nodoc\ iso _TestHtmlTemplateLoopPreservesContext is UnitTest
+  fun name(): String => "HtmlTemplate: rejects loop that changes context"
+
+  fun apply(h: TestHelper) =>
+    // Loop body opens a tag without closing it
+    try
+      HtmlTemplate.parse("{{ for x in items }}<div{{ end }}")?
+      h.fail("should have errored")
+    end
+
+class \nodoc\ iso _TestHtmlTemplateErrorInTagName is UnitTest
+  fun name(): String => "HtmlTemplate: rejects variable in tag name"
+
+  fun apply(h: TestHelper) =>
+    try
+      HtmlTemplate.parse("<{{ tag }}>hello</div>")?
+      h.fail("should have errored")
+    end
+
+class \nodoc\ iso _TestHtmlTemplateErrorUnquotedAttr is UnitTest
+  fun name(): String => "HtmlTemplate: rejects variable in unquoted attr"
+
+  fun apply(h: TestHelper) =>
+    try
+      HtmlTemplate.parse("<div class={{ cls }}>hello</div>")?
+      h.fail("should have errored")
+    end
+
+class \nodoc\ iso _TestHtmlTemplateScriptContext is UnitTest
+  fun name(): String => "HtmlTemplate: JS-escapes in script context"
+
+  fun apply(h: TestHelper) =>
+    try
+      let t = HtmlTemplate.parse(
+        "<script>var x = \"{{ val }}\";</script>")?
+      let v = TemplateValues
+      v("val") = "a\"b"
+      let result = t.render(v)?
+      // Should use JS escaping, not HTML escaping
+      h.assert_true(result.contains("\\\""))
+      h.assert_false(result.contains("&#34;"))
+    else
+      h.fail("unexpected error")
+    end
+
+class \nodoc\ iso _TestHtmlTemplateCommentContext is UnitTest
+  fun name(): String => "HtmlTemplate: strips dashes in comment context"
+
+  fun apply(h: TestHelper) =>
+    try
+      let t = HtmlTemplate.parse("<!-- {{ note }} -->")?
+      let v = TemplateValues
+      v("note") = "a--b"
+      let result = t.render(v)?
+      // Should strip -- sequences
+      h.assert_true(result.contains("ab"))
+      h.assert_false(result.contains("a--b"))
+    else
+      h.fail("unexpected error")
+    end
+
+class \nodoc\ iso _TestHtmlTemplateCssAttrContext is UnitTest
+  fun name(): String => "HtmlTemplate: CSS-escapes in style attribute"
+
+  fun apply(h: TestHelper) =>
+    try
+      let t = HtmlTemplate.parse("<div style=\"color: {{ color }}\">x</div>")?
+      let v = TemplateValues
+      v("color") = "red;} body{background:url(evil)}"
+      let result = t.render(v)?
+      // CSS escaping should prevent breaking out of the property value
+      h.assert_false(result.contains("}"))
+    else
+      h.fail("unexpected error")
+    end
+
+class \nodoc\ iso _TestHtmlTemplateRcdataContext is UnitTest
+  fun name(): String => "HtmlTemplate: RCDATA-escapes in title element"
+
+  fun apply(h: TestHelper) =>
+    try
+      let t = HtmlTemplate.parse("<title>{{ page_title }}</title>")?
+      let v = TemplateValues
+      v("page_title") = "A & B <script>"
+      let result = t.render(v)?
+      // RCDATA escaping: & and < are escaped, > left as-is for RCDATA
+      h.assert_true(result.contains("&amp;"))
+      h.assert_true(result.contains("&lt;"))
+      h.assert_false(result.contains("<script>"))
+    else
+      h.fail("unexpected error")
+    end
+
+class \nodoc\ iso _PropHtmlTemplateEscapesInText is Property1[String]
+  fun name(): String =>
+    "HtmlTemplate: rendered text never contains raw < or >"
+
+  fun gen(): Generator[String] =>
+    Generators.ascii(1, 50)
+
+  fun property(arg1: String, h: PropertyHelper) =>
+    try
+      let t = HtmlTemplate.parse("<p>{{ x }}</p>")?
+      let v = TemplateValues
+      v("x") = arg1
+      let result = t.render(v)?
+      // Strip the known wrapper to get just the escaped content
+      let inner: String val = result.substring(3, result.size().isize() - 4)
+      for c in inner.values() do
+        match c
+        | '<' => h.fail("unescaped < in output")
+        | '>' => h.fail("unescaped > in output")
+        end
+      end
+    end

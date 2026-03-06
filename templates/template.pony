@@ -1,8 +1,17 @@
 """
-A simple text-based template engine.
+A text-based template engine with optional HTML auto-escaping.
 
-Templates are strings containing literal text interspersed with `{{ ... }}`
-blocks. Supported block types:
+Two template types are available:
+
+* `Template` renders values as-is, with no escaping. Suitable for plain text,
+  configuration files, or contexts where HTML safety is not a concern.
+* `HtmlTemplate` automatically escapes variable output based on HTML context —
+  text content gets entity escaping, URL attributes get scheme filtering and
+  percent-encoding, script contexts get JS string escaping, and so on.
+  Use `TemplateValue.unescaped` to bypass escaping for trusted content.
+
+Both types share the same template syntax. Templates are strings containing
+literal text interspersed with `{{ ... }}` blocks. Supported block types:
 
 * **Variable substitution**: `{{ name }}` or `{{ obj.prop }}`
 * **Conditionals**: `{{ if flag }}...{{ end }}`, with optional
@@ -161,9 +170,14 @@ class box TemplateValue
   """
   A value that can be used in a template. Either a single value or a
   sequence of values.
+
+  When used with `HtmlTemplate`, values are automatically escaped based on
+  their HTML context. To bypass escaping for trusted content, use the
+  `unescaped` constructor instead of `create`.
   """
   let _data: (String | Seq[TemplateValue] box)
   let _properties: Map[String, TemplateValue] box
+  let _renderable: RenderableValue
 
   new box create(
     value: (String | Seq[TemplateValue] box),
@@ -171,10 +185,38 @@ class box TemplateValue
   ) =>
     _data = value
     _properties = properties
+    _renderable = _HtmlEscapingRenderer
+
+  new box unescaped(
+    value: (String | Seq[TemplateValue] box),
+    properties: Map[String, TemplateValue] box = Map[String, TemplateValue]
+  ) =>
+    """
+    Create a value that bypasses HTML auto-escaping in `HtmlTemplate`.
+    The content is inserted as-is, without context-aware escaping. Use this
+    only for content you trust (e.g., pre-sanitized HTML fragments).
+
+    Has no effect when used with plain `Template`, which does not escape.
+
+    Note: the unescaped annotation applies only to direct variable
+    substitution (`{{ name }}`). When a value passes through a filter pipe
+    (`{{ name | upper }}`), the result is always escaped — filters could
+    introduce unsafe content.
+    """
+    _data = value
+    _properties = properties
+    _renderable = _NoEscapeRenderer
 
   fun apply(name: String): TemplateValue? => _properties(name)?
 
   fun string(): String? => _data as String
+
+  fun renderable(): RenderableValue =>
+    """
+    The rendering strategy for this value. `HtmlTemplate` calls this to
+    determine how to escape the value based on HTML context.
+    """
+    _renderable
 
   fun values(): Iterator[TemplateValue] =>
     match _data
@@ -227,6 +269,15 @@ class TemplateValues
     | let string: String => TemplateValue(string)
     | let template_value: TemplateValue => template_value
     end
+
+  fun ref unescaped(name: String, value: String) =>
+    """
+    Store a string value that bypasses HTML auto-escaping in `HtmlTemplate`.
+    See `TemplateValue.unescaped` for details. For structured values (with
+    properties or sequences), use `TemplateValue.unescaped()` directly and
+    pass the result to `update()`.
+    """
+    _values(name) = TemplateValue.unescaped(value)
 
   fun box _override(name: String, value: TemplateValue): TemplateValues =>
     let values = Map[String, TemplateValue]
