@@ -1,22 +1,3 @@
-use "peg"
-
-
-primitive _TName is Label fun text(): String => "Name"
-primitive _TPipe is Label fun text(): String => "Pipe"
-primitive _TFilter is Label fun text(): String => "Filter"
-primitive _TFilterArg is Label fun text(): String => "FilterArg"
-primitive _TProp is Label fun text(): String => "Prop"
-primitive _TLoop is Label fun text(): String => "Loop"
-primitive _TEnd is Label fun text(): String => "End"
-primitive _TIf is Label fun text(): String => "If"
-primitive _TIfNot is Label fun text(): String => "IfNot"
-primitive _TElse is Label fun text(): String => "Else"
-primitive _TElseIf is Label fun text(): String => "ElseIf"
-primitive _TInclude is Label fun text(): String => "Include"
-primitive _TExtends is Label fun text(): String => "Extends"
-primitive _TBlock is Label fun text(): String => "Block"
-primitive _TPipeSourceLiteral is Label fun text(): String => "PipeSourceLiteral"
-
 primitive _EndNode
 primitive _ElseNode
 
@@ -107,182 +88,339 @@ type _StmtNode is
   | _PropNode | _PipeNode | _IfNode | _IfNotNode
   | _LoopNode | _IncludeNode | _ExtendsNode | _BlockNode )
 
-primitive _StmtParser
-  fun _parser(): Parser val =>
-    recover
-      let alpha = R('a', 'z') / R('A', 'Z') / L("_")
-      let digit = R('0', '9')
-      let name = (alpha * (alpha / digit).many()).term(_TName)
 
-      let prop = (name * (L(".") * name).many()).node(_TProp)
+class _Cursor
+  """
+  A simple cursor over a `String val` with position tracking for recursive
+  descent parsing.
+  """
+  let _data: String val
+  var _pos: USize
 
-      let whitespace = (L(" ") / L("\t")).many1()
+  new create(data: String val) =>
+    _data = data
+    _pos = 0
 
-      // String literal for filter arguments: "..." with printable ASCII
-      // except double quote
-      let string_char = R(' ', '!') / R('#', '~')
-      let string_literal =
-        (L("\"") * string_char.many() * L("\"")).term(_TFilterArg)
+  fun pos(): USize => _pos
 
-      // A filter argument is a string literal or a prop reference
-      let filter_arg = string_literal / prop
+  fun ref set_pos(p: USize) =>
+    _pos = p
 
-      // Filter arguments list: (arg1, arg2, ...)
-      let filter_args =
-        L("(") * filter_arg * (L(",") * filter_arg).many() * L(")")
+  fun has_remaining(): Bool =>
+    _pos < _data.size()
 
-      // A filter call: name or name(args)
-      let filter_call =
-        (name * filter_args.opt()).node(_TFilter).hide(whitespace)
+  fun peek(): U8? =>
+    _data(_pos)?
 
-      // String literal as pipe source: "..." tagged distinctly from filter args
-      let pipe_source_literal =
-        (L("\"") * string_char.many() * L("\"")).term(_TPipeSourceLiteral)
+  fun ref next(): U8? =>
+    let c = _data(_pos)?
+    _pos = _pos + 1
+    c
 
-      // Pipe expression: source | filter1 | filter2 ...
-      // Source is either a string literal or a prop reference.
-      let pipe_source = Forward
-      pipe_source() = pipe_source_literal / prop
-      let pipe_expr =
-        (pipe_source * (L("|") * filter_call).many1())
-          .node(_TPipe).hide(whitespace)
+  fun ref advance() =>
+    _pos = _pos + 1
 
-      let expr = pipe_expr / prop
-      let end' = L("end").term(_TEnd)
-      let loop = (L("for") * name * L("in") * prop).node(_TLoop)
-        .hide(whitespace)
-      let ifnot = (L("ifnot") * prop).node(_TIfNot).hide(whitespace)
-      let else_if = (L("elseif") * prop).node(_TElseIf).hide(whitespace)
-      let else' = L("else").term(_TElse)
-      let if' = (L("if") * prop).node(_TIf).hide(whitespace)
-
-      let partial_char = alpha / digit / L("-")
-      let partial_name = (L("\"") * partial_char.many1() * L("\""))
-        .term(_TName)
-      let include = (L("include") * partial_name).node(_TInclude)
-        .hide(whitespace)
-      let extends' = (L("extends") * partial_name).node(_TExtends)
-        .hide(whitespace)
-      let block' = (L("block") * name).node(_TBlock).hide(whitespace)
-
-      let stmt =
-        extends' / ifnot / if' / loop / include / block' / else_if
-          / else' / end' / expr
-      stmt
-    end
-
-  fun parse(source: String): _StmtNode? =>
-    let stripped = source.clone()
-    stripped.strip()
-    let expected_pos = stripped.size()
-    (let pos, let result) = _parser().parse(Source.from_string(consume stripped))
-    if pos < expected_pos then error end
-    match result
-    | let ast: ASTChild =>
-      match ast.label()
-      | let if': _TIf => _parse_if(ast as AST)?
-      | let ifnot: _TIfNot => _parse_ifnot(ast as AST)?
-      | let _: _TElse => _ElseNode
-      | let _: _TElseIf => _parse_elseif(ast as AST)?
-      | let _: _TEnd => _EndNode
-      | let _: _TPipe => _parse_pipe(ast as AST)?
-      | let loop: _TLoop => _parse_loop(ast as AST)?
-      | let _: _TInclude => _parse_include(ast as AST)?
-      | let _: _TExtends => _parse_extends(ast as AST)?
-      | let _: _TBlock => _parse_block(ast as AST)?
-      | let prop: _TProp => _parse_prop(ast as AST)?
-      else error
-      end
-    else error
-    end
-
-  fun _parse_pipe(ast: AST): _PipeNode? =>
-    // First child is the source: either a prop or a string literal
-    let first_child = ast.children(0)?
-    let source: (_PropNode | String) =
-      match first_child.label()
-      | let _: _TPipeSourceLiteral =>
-        let quoted = (first_child as Token).string()
-        quoted.substring(1, -1)
-      | let _: _TProp =>
-        _parse_prop(first_child as AST)?
-      else error
-      end
-
-    // Remaining children are sequence nodes from many1(), each containing
-    // ["|" token, _TFilter node]. Access the _TFilter at index 1, matching
-    // the pattern used by _parse_prop for (L(".") * name).many().
-    let filters = Array[_FilterStep]
-    for child in ast.children.slice(1).values() do
-      let filter_ast = (child as AST).children(1)? as AST
-      let filter_name = (filter_ast.children(0)? as Token).string()
-      // Collect args by scanning recursively. The PEG Option parser wraps
-      // filter_args.opt() results in an intermediate AST(NoLabel) that isn't
-      // flattened by Sequence, so _TFilterArg and _TProp nodes may be nested.
-      let args = Array[_FilterArgValue]
-      var j: USize = 1
-      while j < filter_ast.children.size() do
-        _collect_filter_args(filter_ast.children(j)?, args)?
-        j = j + 1
-      end
-      filters.push(_FilterStep(consume filter_name, consume args))
-    end
-
-    _PipeNode(source, consume filters)
-
-  fun _collect_filter_args(node: ASTChild, args: Array[_FilterArgValue])? =>
-    """
-    Recursively collect filter arguments (_TFilterArg string literals and
-    _TProp variable references) from a PEG AST subtree, skipping over
-    intermediate nodes like parentheses, commas, and Option wrappers.
-    """
-    match node.label()
-    | let _: _TFilterArg =>
-      let quoted = (node as Token).string()
-      args.push(quoted.substring(1, -1))
-    | let _: _TProp =>
-      args.push(_parse_prop(node as AST)?)
-    else
-      try
-        let inner = node as AST
-        for child in inner.children.values() do
-          _collect_filter_args(child, args)?
+  fun ref skip_whitespace() =>
+    try
+      while _pos < _data.size() do
+        let c = _data(_pos)?
+        if (c == ' ') or (c == '\t') then _pos = _pos + 1
+        else return
         end
       end
     end
 
-  fun _parse_if(ast: AST): _IfNode? =>
-    _IfNode(_parse_prop(ast.children(1)? as AST)?)
+  fun ref try_consume(prefix: String): Bool =>
+    let remaining = _data.size() - _pos
+    if remaining < prefix.size() then return false end
+    var i: USize = 0
+    try
+      while i < prefix.size() do
+        if _data(_pos + i)? != prefix(i)? then return false end
+        i = i + 1
+      end
+    else return false
+    end
+    _pos = _pos + prefix.size()
+    true
 
-  fun _parse_ifnot(ast: AST): _IfNotNode? =>
-    _IfNotNode(_parse_prop(ast.children(1)? as AST)?)
+  fun ref try_consume_char(c: U8): Bool =>
+    try
+      if _data(_pos)? == c then
+        _pos = _pos + 1
+        true
+      else false
+      end
+    else false
+    end
 
-  fun _parse_elseif(ast: AST): _ElseIfNode? =>
-    _ElseIfNode(_parse_prop(ast.children(1)? as AST)?)
+  fun substring(from: USize, to: USize): String =>
+    _data.substring(from.isize(), to.isize())
 
-  fun _parse_loop(ast: AST): _LoopNode? =>
-    let target = (ast.children(1)? as Token).string()
-    let source = _parse_prop(ast.children(3)? as AST)?
-    _LoopNode(consume target, source)
 
-  fun _parse_include(ast: AST): _IncludeNode? =>
-    let quoted = (ast.children(1)? as Token).string()
-    let name = quoted.substring(1, -1)
-    _IncludeNode(consume name)
+primitive _StmtParser
+  fun parse(source: String): _StmtNode? =>
+    let stripped = source.clone()
+    stripped.strip()
+    let cursor = _Cursor(consume stripped)
+    let result = _parse_stmt(cursor)?
+    cursor.skip_whitespace()
+    if cursor.has_remaining() then error end
+    result
 
-  fun _parse_extends(ast: AST): _ExtendsNode? =>
-    let quoted = (ast.children(1)? as Token).string()
-    let name = quoted.substring(1, -1)
-    _ExtendsNode(consume name)
+  fun _parse_stmt(cursor: _Cursor): _StmtNode? =>
+    cursor.skip_whitespace()
 
-  fun _parse_block(ast: AST): _BlockNode? =>
-    let block_name = (ast.children(1)? as Token).string()
-    _BlockNode(consume block_name)
+    // Try keywords in PEG priority order.
+    // Keywords with required arguments use cursor reset for backtracking.
+    // Terminal keywords (else, end) return directly.
 
-  fun _parse_prop(ast: AST): _PropNode? =>
-    let name = (ast.children(0)? as Token).string()
-    let props: Array[String] = []
-    for child in ast.children.slice(1).values() do
-      props.push(((child as AST).children(1)? as Token).string())
+    // extends
+    let saved = cursor.pos()
+    if cursor.try_consume("extends") then
+      try return _parse_extends_kw(cursor)?
+      else cursor.set_pos(saved)
+      end
+    end
+
+    // ifnot (must come before if)
+    if cursor.try_consume("ifnot") then
+      try return _parse_ifnot_kw(cursor)?
+      else cursor.set_pos(saved)
+      end
+    end
+
+    // if
+    if cursor.try_consume("if") then
+      try return _parse_if_kw(cursor)?
+      else cursor.set_pos(saved)
+      end
+    end
+
+    // for
+    if cursor.try_consume("for") then
+      try return _parse_loop_kw(cursor)?
+      else cursor.set_pos(saved)
+      end
+    end
+
+    // include
+    if cursor.try_consume("include") then
+      try return _parse_include_kw(cursor)?
+      else cursor.set_pos(saved)
+      end
+    end
+
+    // block
+    if cursor.try_consume("block") then
+      try return _parse_block_kw(cursor)?
+      else cursor.set_pos(saved)
+      end
+    end
+
+    // elseif
+    if cursor.try_consume("elseif") then
+      try return _parse_elseif_kw(cursor)?
+      else cursor.set_pos(saved)
+      end
+    end
+
+    // else (terminal)
+    if cursor.try_consume("else") then
+      return _ElseNode
+    end
+
+    // end (terminal)
+    if cursor.try_consume("end") then
+      return _EndNode
+    end
+
+    // Fall through to expression
+    _parse_expr(cursor)?
+
+  fun _parse_expr(cursor: _Cursor): _StmtNode? =>
+    """
+    Parse an expression: a pipe source (string literal or prop) optionally
+    followed by a pipe tail.
+    """
+    cursor.skip_whitespace()
+    let source: (_PropNode | String) =
+      try _parse_string_literal(cursor)?
+      else _parse_prop(cursor)?
+      end
+
+    cursor.skip_whitespace()
+    if cursor.try_consume_char('|') then
+      // Parse pipe tail
+      let filters = Array[_FilterStep]
+      _parse_filter_call(cursor, filters)?
+      while true do
+        cursor.skip_whitespace()
+        if cursor.try_consume_char('|') then
+          _parse_filter_call(cursor, filters)?
+        else break
+        end
+      end
+      _PipeNode(source, consume filters)
+    else
+      match source
+      | let p: _PropNode => p
+      | let s: String =>
+        // A bare string literal with no pipe is not a valid statement
+        error
+      end
+    end
+
+  fun _parse_filter_call(
+    cursor: _Cursor,
+    filters: Array[_FilterStep]
+  )? =>
+    """
+    Parse a single filter call: `name` or `name(arg1, arg2, ...)`.
+    """
+    cursor.skip_whitespace()
+    let name = _parse_name(cursor)?
+    cursor.skip_whitespace()
+    let args = Array[_FilterArgValue]
+    if cursor.try_consume_char('(') then
+      // Parse first argument
+      cursor.skip_whitespace()
+      args.push(_parse_filter_arg(cursor)?)
+      // Parse remaining arguments
+      while true do
+        cursor.skip_whitespace()
+        if cursor.try_consume_char(',') then
+          cursor.skip_whitespace()
+          args.push(_parse_filter_arg(cursor)?)
+        else break
+        end
+      end
+      cursor.skip_whitespace()
+      if not cursor.try_consume_char(')') then error end
+    end
+    filters.push(_FilterStep(consume name, consume args))
+
+  fun _parse_filter_arg(cursor: _Cursor): _FilterArgValue? =>
+    """
+    Parse a filter argument: either a string literal or a prop reference.
+    """
+    cursor.skip_whitespace()
+    try
+      _parse_string_literal(cursor)?
+    else
+      _parse_prop(cursor)?
+    end
+
+  fun _parse_prop(cursor: _Cursor): _PropNode? =>
+    """
+    Parse a property reference: `name` or `name.name.name`.
+    """
+    let name = _parse_name(cursor)?
+    let props = Array[String]
+    while cursor.try_consume_char('.') do
+      props.push(_parse_name(cursor)?)
     end
     _PropNode(consume name, props)
+
+  fun _parse_name(cursor: _Cursor): String? =>
+    """
+    Parse an identifier: `[a-zA-Z_][a-zA-Z0-9_]*`.
+    """
+    let start = cursor.pos()
+    let first = cursor.peek()?
+    if not (_is_alpha(first) or (first == '_')) then error end
+    cursor.advance()
+    try
+      while true do
+        let c = cursor.peek()?
+        if _is_alpha(c) or _is_digit(c) or (c == '_') then
+          cursor.advance()
+        else break
+        end
+      end
+    end
+    cursor.substring(start, cursor.pos())
+
+  fun _parse_string_literal(cursor: _Cursor): String? =>
+    """
+    Parse a double-quoted string literal: `"..."` with printable ASCII
+    except double quote. Returns the content without quotes.
+    """
+    if not cursor.try_consume_char('"') then error end
+    let start = cursor.pos()
+    try
+      while true do
+        let c = cursor.peek()?
+        if c == '"' then break end
+        // Printable ASCII except double quote: ' ' to '!' and '#' to '~'
+        if ((c >= 0x20) and (c <= 0x21)) or ((c >= 0x23) and (c <= 0x7E)) then
+          cursor.advance()
+        else error
+        end
+      end
+    end
+    let content = cursor.substring(start, cursor.pos())
+    if not cursor.try_consume_char('"') then error end
+    content
+
+  fun _parse_quoted_name(cursor: _Cursor): String? =>
+    """
+    Parse a quoted name for include/extends: `"[a-zA-Z0-9_-]+"`.
+    Returns the content without quotes.
+    """
+    if not cursor.try_consume_char('"') then error end
+    let start = cursor.pos()
+    var count: USize = 0
+    try
+      while true do
+        let c = cursor.peek()?
+        if _is_alpha(c) or _is_digit(c) or (c == '_') or (c == '-') then
+          cursor.advance()
+          count = count + 1
+        else break
+        end
+      end
+    end
+    if count == 0 then error end
+    let content = cursor.substring(start, cursor.pos())
+    if not cursor.try_consume_char('"') then error end
+    content
+
+  fun _parse_if_kw(cursor: _Cursor): _IfNode? =>
+    cursor.skip_whitespace()
+    _IfNode(_parse_prop(cursor)?)
+
+  fun _parse_ifnot_kw(cursor: _Cursor): _IfNotNode? =>
+    cursor.skip_whitespace()
+    _IfNotNode(_parse_prop(cursor)?)
+
+  fun _parse_elseif_kw(cursor: _Cursor): _ElseIfNode? =>
+    cursor.skip_whitespace()
+    _ElseIfNode(_parse_prop(cursor)?)
+
+  fun _parse_loop_kw(cursor: _Cursor): _LoopNode? =>
+    cursor.skip_whitespace()
+    let target = _parse_name(cursor)?
+    cursor.skip_whitespace()
+    if not cursor.try_consume("in") then error end
+    cursor.skip_whitespace()
+    let source = _parse_prop(cursor)?
+    _LoopNode(consume target, source)
+
+  fun _parse_include_kw(cursor: _Cursor): _IncludeNode? =>
+    cursor.skip_whitespace()
+    _IncludeNode(_parse_quoted_name(cursor)?)
+
+  fun _parse_extends_kw(cursor: _Cursor): _ExtendsNode? =>
+    cursor.skip_whitespace()
+    _ExtendsNode(_parse_quoted_name(cursor)?)
+
+  fun _parse_block_kw(cursor: _Cursor): _BlockNode? =>
+    cursor.skip_whitespace()
+    _BlockNode(_parse_name(cursor)?)
+
+  fun _is_alpha(c: U8): Bool =>
+    ((c >= 'a') and (c <= 'z')) or ((c >= 'A') and (c <= 'Z'))
+
+  fun _is_digit(c: U8): Bool =>
+    (c >= '0') and (c <= '9')
