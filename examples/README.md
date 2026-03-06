@@ -8,7 +8,7 @@ Parses a template with a single placeholder, binds a value, and renders the resu
 
 ## [filters-example](filters-example/)
 
-Uses the filter/pipe system to transform values. Demonstrates built-in filters (`upper`, `trim`, `capitalize`, `title`, `default`), chaining multiple filters (`{{ greeting | trim | capitalize }}`), custom filter registration via `TemplateContext`, and filters inside loops.
+Uses the filter/pipe system to transform values. Demonstrates built-in filters (`upper`, `trim`, `capitalize`, `title`, `default`), chaining multiple filters (`{{ greeting | trim | capitalize }}`), string literals as pipe sources (`{{ "hello world" | upper }}`), custom filter registration via `TemplateContext`, and filters inside loops.
 
 ## [conditionals-example](conditionals-example/)
 

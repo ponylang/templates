@@ -82,17 +82,24 @@ actor Main
       // Output: hahaha hohoho
     end
 
+    // String literal as pipe source — no variable needed
+    try
+      let t5 = Template.parse("{{ \"hello world\" | upper }}", ctx)?
+      env.out.print(t5.render(TemplateValues)?)
+      // Output: HELLO WORLD
+    end
+
     // Combining default and upper (migration from old syntax)
     // Old: {{ upper(name | default("anon")) }}
     // New: {{ name | default("anon") | upper }}
     try
-      let t5 = Template.parse(
+      let t6 = Template.parse(
         "{{ name | default(\"anon\") | upper }}", ctx)?
-      env.out.print(t5.render(TemplateValues)?)
+      env.out.print(t6.render(TemplateValues)?)
       // Output: ANON
 
-      let v5 = TemplateValues
-      v5("name") = "alice"
-      env.out.print(t5.render(v5)?)
+      let v6 = TemplateValues
+      v6("name") = "alice"
+      env.out.print(t6.render(v6)?)
       // Output: ALICE
     end

@@ -138,6 +138,14 @@ actor \nodoc\ Main is TestList
     test(_TestRenderInheritanceBlockWithVariables)
     test(_TestRenderBlocksWithoutExtends)
 
+    // String literal pipe source tests
+    test(_TestRenderPipeLiteralSource)
+    test(_TestRenderPipeLiteralChain)
+    test(_TestRenderPipeLiteralDefault)
+    test(_TestRenderPipeLiteralReplace)
+    test(_TestParserPipeLiteralSource)
+    test(Property1UnitTest[String](_PropPipeLiteralUpper))
+
     // Default value render tests (using pipe syntax)
     test(Property1UnitTest[(String, String)](_PropDefaultWhenMissing))
     test(Property1UnitTest[(String, String, String)](_PropDefaultWhenPresent))
@@ -339,6 +347,14 @@ primitive \nodoc\ _Generators
     Generates `block name` where name is a valid identifier.
     """
     valid_name().map[String]({(name) => "block " + name })
+
+  fun pipe_source_string(): Generator[String] =>
+    """
+    Generates printable ASCII strings excluding `"`, length 0-50, for use
+    as string literal pipe sources in `{{ "..." | filter }}`. Same character
+    set as `filter_arg_string` (printable ASCII minus double quote).
+    """
+    filter_arg_string()
 
   fun filter_arg_string(): Generator[String] =>
     """
@@ -688,8 +704,12 @@ class \nodoc\ iso _TestParserNodeFields is UnitTest
     // "foo | upper" → _PipeNode(source=_PropNode("foo"), filters=[...])
     match _StmtParser.parse("foo | upper")?
     | let pipe: _PipeNode =>
-      h.assert_eq[String]("foo", pipe.source.name)
-      h.assert_eq[USize](0, pipe.source.props.size())
+      match pipe.source
+      | let src: _PropNode =>
+        h.assert_eq[String]("foo", src.name)
+        h.assert_eq[USize](0, src.props.size())
+      else h.fail("expected _PropNode source"); error
+      end
       h.assert_eq[USize](1, pipe.filters.size())
       h.assert_eq[String]("upper", pipe.filters(0)?.name)
       h.assert_eq[USize](0, pipe.filters(0)?.args.size())
@@ -761,7 +781,11 @@ class \nodoc\ iso _TestParserPipeNodeFields is UnitTest
     // "name | upper" → single 0-arg filter
     match _StmtParser.parse("name | upper")?
     | let pipe: _PipeNode =>
-      h.assert_eq[String]("name", pipe.source.name)
+      match pipe.source
+      | let src: _PropNode =>
+        h.assert_eq[String]("name", src.name)
+      else h.fail("expected _PropNode source"); error
+      end
       h.assert_eq[USize](1, pipe.filters.size())
       h.assert_eq[String]("upper", pipe.filters(0)?.name)
       h.assert_eq[USize](0, pipe.filters(0)?.args.size())
@@ -771,7 +795,11 @@ class \nodoc\ iso _TestParserPipeNodeFields is UnitTest
     // 'name | default("x")' → single 1-arg filter with string literal
     match _StmtParser.parse("name | default(\"x\")")?
     | let pipe: _PipeNode =>
-      h.assert_eq[String]("name", pipe.source.name)
+      match pipe.source
+      | let src: _PropNode =>
+        h.assert_eq[String]("name", src.name)
+      else h.fail("expected _PropNode source"); error
+      end
       h.assert_eq[USize](1, pipe.filters.size())
       h.assert_eq[String]("default", pipe.filters(0)?.name)
       h.assert_eq[USize](1, pipe.filters(0)?.args.size())
@@ -785,9 +813,13 @@ class \nodoc\ iso _TestParserPipeNodeFields is UnitTest
     // "a.b | trim | upper" → dotted source, two filters
     match _StmtParser.parse("a.b | trim | upper")?
     | let pipe: _PipeNode =>
-      h.assert_eq[String]("a", pipe.source.name)
-      h.assert_eq[USize](1, pipe.source.props.size())
-      h.assert_eq[String]("b", pipe.source.props(0)?)
+      match pipe.source
+      | let src: _PropNode =>
+        h.assert_eq[String]("a", src.name)
+        h.assert_eq[USize](1, src.props.size())
+        h.assert_eq[String]("b", src.props(0)?)
+      else h.fail("expected _PropNode source"); error
+      end
       h.assert_eq[USize](2, pipe.filters.size())
       h.assert_eq[String]("trim", pipe.filters(0)?.name)
       h.assert_eq[String]("upper", pipe.filters(1)?.name)
@@ -2751,6 +2783,83 @@ class \nodoc\ iso _PropTrimDeterminism is Property1[String]
     let r1 = template.render(values)?
     let r2 = template.render(values)?
     h.assert_eq[String](r1, r2)
+
+
+// ---------------------------------------------------------------------------
+// String literal pipe source tests
+// ---------------------------------------------------------------------------
+
+class \nodoc\ iso _TestRenderPipeLiteralSource is UnitTest
+  fun name(): String => "Render: string literal pipe source"
+
+  fun apply(h: TestHelper)? =>
+    h.assert_eq[String]("HELLO",
+      Template.parse("{{ \"hello\" | upper }}")?.render(TemplateValues)?)
+
+
+class \nodoc\ iso _TestRenderPipeLiteralChain is UnitTest
+  fun name(): String => "Render: string literal pipe chain"
+
+  fun apply(h: TestHelper)? =>
+    h.assert_eq[String]("HELLO",
+      Template.parse("{{ \"  hello  \" | trim | upper }}")?
+        .render(TemplateValues)?)
+
+
+class \nodoc\ iso _TestRenderPipeLiteralDefault is UnitTest
+  fun name(): String => "Render: string literal pipe default"
+
+  fun apply(h: TestHelper)? =>
+    h.assert_eq[String]("fallback",
+      Template.parse("{{ \"\" | default(\"fallback\") }}")?
+        .render(TemplateValues)?)
+
+
+class \nodoc\ iso _TestRenderPipeLiteralReplace is UnitTest
+  fun name(): String => "Render: string literal pipe replace"
+
+  fun apply(h: TestHelper)? =>
+    h.assert_eq[String]("hello pony",
+      Template.parse(
+        "{{ \"hello world\" | replace(\"world\", \"pony\") }}")?
+        .render(TemplateValues)?)
+
+
+class \nodoc\ iso _TestParserPipeLiteralSource is UnitTest
+  fun name(): String => "Parser: pipe literal source is String"
+
+  fun apply(h: TestHelper)? =>
+    match _StmtParser.parse("\"hello\" | upper")?
+    | let pipe: _PipeNode =>
+      match pipe.source
+      | let s: String =>
+        h.assert_eq[String]("hello", s)
+      else h.fail("expected String source"); error
+      end
+      h.assert_eq[USize](1, pipe.filters.size())
+      h.assert_eq[String]("upper", pipe.filters(0)?.name)
+    else h.fail("expected _PipeNode"); error
+    end
+
+
+class \nodoc\ iso _PropPipeLiteralUpper is Property1[String]
+  """
+  For any generated string, `{{ "<string>" | upper }}` equals
+  `string.upper()`.
+  """
+  fun name(): String => "Prop: string literal pipe upper"
+
+  fun gen(): Generator[String] =>
+    // Printable ASCII 0x20-0x7E excluding double quote (0x22), matching the
+    // string_char rule in the parser grammar.
+    _Generators.pipe_source_string()
+
+  fun property(sample: String, h: PropertyHelper)? =>
+    let source = recover val
+      "{{ \"" + sample + "\" | upper }}"
+    end
+    let result = Template.parse(source)?.render(TemplateValues)?
+    h.assert_eq[String](sample.upper(), result)
 
 
 // ---------------------------------------------------------------------------

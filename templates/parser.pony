@@ -15,6 +15,7 @@ primitive _TElseIf is Label fun text(): String => "ElseIf"
 primitive _TInclude is Label fun text(): String => "Include"
 primitive _TExtends is Label fun text(): String => "Extends"
 primitive _TBlock is Label fun text(): String => "Block"
+primitive _TPipeSourceLiteral is Label fun text(): String => "PipeSourceLiteral"
 
 primitive _EndNode
 primitive _ElseNode
@@ -50,13 +51,14 @@ class box _FilterStep
 
 class box _PipeNode
   """
-  A pipe expression: a source property followed by one or more filter steps.
+  A pipe expression: a source value followed by one or more filter steps.
+  The source is either a property reference or a string literal.
   """
-  let source: _PropNode
+  let source: (_PropNode | String)
   let filters: Array[_FilterStep] box
 
   new box create(
-    source': _PropNode,
+    source': (_PropNode | String),
     filters': Array[_FilterStep] box
   ) =>
     source = source'
@@ -133,12 +135,16 @@ primitive _StmtParser
       let filter_call =
         (name * filter_args.opt()).node(_TFilter).hide(whitespace)
 
-      // Pipe expression: prop | filter1 | filter2 ...
-      // Use Forward to prevent flattening of prop internals
-      let prop_ref = Forward
-      prop_ref() = prop
+      // String literal as pipe source: "..." tagged distinctly from filter args
+      let pipe_source_literal =
+        (L("\"") * string_char.many() * L("\"")).term(_TPipeSourceLiteral)
+
+      // Pipe expression: source | filter1 | filter2 ...
+      // Source is either a string literal or a prop reference.
+      let pipe_source = Forward
+      pipe_source() = pipe_source_literal / prop
       let pipe_expr =
-        (prop_ref * (L("|") * filter_call).many1())
+        (pipe_source * (L("|") * filter_call).many1())
           .node(_TPipe).hide(whitespace)
 
       let expr = pipe_expr / prop
@@ -191,8 +197,17 @@ primitive _StmtParser
     end
 
   fun _parse_pipe(ast: AST): _PipeNode? =>
-    // First child is the prop (source)
-    let source = _parse_prop(ast.children(0)? as AST)?
+    // First child is the source: either a prop or a string literal
+    let first_child = ast.children(0)?
+    let source: (_PropNode | String) =
+      match first_child.label()
+      | let _: _TPipeSourceLiteral =>
+        let quoted = (first_child as Token).string()
+        quoted.substring(1, -1)
+      | let _: _TProp =>
+        _parse_prop(first_child as AST)?
+      else error
+      end
 
     // Remaining children are sequence nodes from many1(), each containing
     // ["|" token, _TFilter node]. Access the _TFilter at index 1, matching
