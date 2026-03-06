@@ -184,6 +184,23 @@ actor \nodoc\ Main is TestList
     test(_TestCommentMinimal)
     test(_TestCommentWithQuotes)
 
+    // Raw block tests
+    test(Property1UnitTest[String](_PropRawBlockContentIdentity))
+    test(Property1UnitTest[String](_PropRawBlockSurroundingLiteralsPreserved))
+    test(_TestRawBasic)
+    test(_TestRawWithTrim)
+    test(_TestRawWithTemplateDelimiters)
+    test(_TestRawInsideIf)
+    test(_TestRawInsideLoop)
+    test(_TestRawInsideElse)
+    test(_TestRawBeforeExtends)
+    test(_TestRawAdjacent)
+    test(_TestRawBetweenLiterals)
+    test(_TestRawEmpty)
+    test(_TestRawUnclosed)
+    test(_TestRawMinimal)
+    test(_TestRawWithBraces)
+
     // from_file test (Step 8)
     test(_TestFromFile)
 
@@ -241,6 +258,8 @@ primitive \nodoc\ _Generators
             end
           end
         end
+        // Reject "raw" exactly (reserved keyword for raw blocks)
+        if s == "raw" then return (consume s, false) end
         // Reject names starting with "block" + alpha/underscore
         // (parses as _BlockNode, same as "iffy" → _IfNode)
         if (s.size() >= 6) and s.at("block", 0) then
@@ -405,6 +424,30 @@ primitive \nodoc\ _Generators
       + "0123456789:;<=>?@"
       + "ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`"
       + "abcdefghijklmnopqrstuvwxyz{|~"
+    Generator[String](
+      object is GenObj[String]
+        fun generate(rnd: Randomness): String^ =>
+          let len = rnd.usize(0, 30)
+          let s = recover iso String(len) end
+          var i: USize = 0
+          while i < len do
+            try s.push(chars(rnd.usize(0, chars.size() - 1))?) end
+            i = i + 1
+          end
+          consume s
+      end)
+
+  fun raw_body(): Generator[String] =>
+    """
+    Generates printable ASCII strings 0-30 chars, excluding `{` so that `{{`
+    can never form inside the generated content and accidentally create
+    `{{end}}`.
+    """
+    let chars: String val =
+      " !\"#$%&'()*+,-./"
+      + "0123456789:;<=>?@"
+      + "ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`"
+      + "abcdefghijklmnopqrstuvwxyz|}~"
     Generator[String](
       object is GenObj[String]
         fun generate(rnd: Randomness): String^ =>
@@ -3086,6 +3129,221 @@ class \nodoc\ iso _TestCommentWithQuotes is UnitTest
     // Single } inside comment (legal — only }} closes)
     h.assert_eq[String]("ab",
       Template.parse("a{{! single } brace }}b")?
+        .render(TemplateValues)?)
+
+
+// ---------------------------------------------------------------------------
+// Raw block tests
+// ---------------------------------------------------------------------------
+
+class \nodoc\ iso _PropRawBlockContentIdentity is Property1[String]
+  """
+  For any generated raw body, `{{raw}}<body>{{end}}` renders as `<body>`.
+  """
+  fun name(): String => "Prop: raw block content is identity"
+
+  fun gen(): Generator[String] =>
+    _Generators.raw_body()
+
+  fun property(sample: String, h: PropertyHelper)? =>
+    let source = recover val "{{raw}}" + sample + "{{end}}" end
+    h.assert_eq[String](sample,
+      Template.parse(source)?.render(TemplateValues)?)
+
+
+class \nodoc\ iso _PropRawBlockSurroundingLiteralsPreserved
+  is Property1[String]
+  """
+  Literals before and after a raw block are preserved in the output.
+  """
+  fun name(): String => "Prop: raw block preserves surrounding literals"
+
+  fun gen(): Generator[String] =>
+    _Generators.raw_body()
+
+  fun property(sample: String, h: PropertyHelper)? =>
+    let source = recover val "before{{raw}}" + sample + "{{end}}after" end
+    let expected = recover val "before" + sample + "after" end
+    h.assert_eq[String](expected,
+      Template.parse(source)?.render(TemplateValues)?)
+
+
+class \nodoc\ iso _TestRawBasic is UnitTest
+  fun name(): String => "Raw: basic raw block passes through delimiters"
+
+  fun apply(h: TestHelper)? =>
+    h.assert_eq[String]("{{ name }}",
+      Template.parse("{{raw}}{{ name }}{{end}}")?
+        .render(TemplateValues)?)
+
+
+class \nodoc\ iso _TestRawWithTrim is UnitTest
+  fun name(): String => "Raw: trim markers on raw/end tags"
+
+  fun apply(h: TestHelper)? =>
+    // External trim: left-trim on raw strips preceding whitespace
+    h.assert_eq[String]("beforecontent after",
+      Template.parse("before   {{- raw }}content{{end}} after")?
+        .render(TemplateValues)?)
+    // External trim: right-trim on end strips following whitespace
+    h.assert_eq[String]("before contentafter",
+      Template.parse("before {{raw}}content{{end -}}   after")?
+        .render(TemplateValues)?)
+    // Internal trim: right-trim on raw lstrips content
+    h.assert_eq[String]("content",
+      Template.parse("{{raw -}}   content{{end}}")?
+        .render(TemplateValues)?)
+    // Internal trim: left-trim on end rstrips content
+    h.assert_eq[String]("content",
+      Template.parse("{{raw}}content   {{- end}}")?
+        .render(TemplateValues)?)
+    // Both internal trims
+    h.assert_eq[String]("content",
+      Template.parse("{{raw -}}   content   {{- end}}")?
+        .render(TemplateValues)?)
+    // All four trims
+    h.assert_eq[String]("content",
+      Template.parse("   {{- raw -}}   content   {{- end -}}   ")?
+        .render(TemplateValues)?)
+
+
+class \nodoc\ iso _TestRawWithTemplateDelimiters is UnitTest
+  fun name(): String => "Raw: template syntax passes through literally"
+
+  fun apply(h: TestHelper)? =>
+    // Note: {{ end }} cannot appear inside raw content because it closes the
+    // raw block. Other template syntax passes through fine.
+    h.assert_eq[String]("{{ if flag }}yes{{ else }}no",
+      Template.parse(
+        "{{raw}}{{ if flag }}yes{{ else }}no{{end}}")?
+        .render(TemplateValues)?)
+
+
+class \nodoc\ iso _TestRawInsideIf is UnitTest
+  fun name(): String => "Raw: raw block inside if body"
+
+  fun apply(h: TestHelper)? =>
+    let values = TemplateValues
+    values("show") = "yes"
+    h.assert_eq[String]("{{ x }}",
+      Template.parse(
+        "{{ if show }}{{raw}}{{ x }}{{end}}{{ end }}")?
+        .render(values)?)
+    // When condition is false, raw content not rendered
+    h.assert_eq[String]("",
+      Template.parse(
+        "{{ if show }}{{raw}}{{ x }}{{end}}{{ end }}")?
+        .render(TemplateValues)?)
+
+
+class \nodoc\ iso _TestRawInsideLoop is UnitTest
+  fun name(): String => "Raw: raw block inside loop body"
+
+  fun apply(h: TestHelper)? =>
+    let values = TemplateValues
+    values("items") = TemplateValue(
+      [TemplateValue("a"); TemplateValue("b")])
+    h.assert_eq[String]("{{ x }}{{ x }}",
+      Template.parse(
+        "{{ for item in items }}{{raw}}{{ x }}{{end}}{{ end }}")?
+        .render(values)?)
+
+
+class \nodoc\ iso _TestRawInsideElse is UnitTest
+  fun name(): String => "Raw: raw block inside else branch"
+
+  fun apply(h: TestHelper)? =>
+    h.assert_eq[String]("{{ fallback }}",
+      Template.parse(
+        "{{ if missing }}yes{{ else }}{{raw}}{{ fallback }}{{end}}{{ end }}")?
+        .render(TemplateValues)?)
+
+
+class \nodoc\ iso _TestRawBeforeExtends is UnitTest
+  fun name(): String => "Raw: raw block before extends prevents extends"
+
+  fun apply(h: TestHelper) =>
+    h.assert_error({()? =>
+      let partials = recover val
+        let m = Map[String, String]
+        m("base") = "base content"
+        m
+      end
+      let ctx = TemplateContext(where partials' = partials)
+      Template.parse(
+        "{{raw}}literal{{end}}{{ extends \"base\" }}", ctx)?
+    })
+
+
+class \nodoc\ iso _TestRawAdjacent is UnitTest
+  fun name(): String => "Raw: multiple adjacent raw blocks"
+
+  fun apply(h: TestHelper)? =>
+    h.assert_eq[String]("{{ a }}{{ b }}",
+      Template.parse(
+        "{{raw}}{{ a }}{{end}}{{raw}}{{ b }}{{end}}")?
+        .render(TemplateValues)?)
+
+
+class \nodoc\ iso _TestRawBetweenLiterals is UnitTest
+  fun name(): String => "Raw: raw block between regular literals"
+
+  fun apply(h: TestHelper)? =>
+    h.assert_eq[String]("before{{ x }}after",
+      Template.parse("before{{raw}}{{ x }}{{end}}after")?
+        .render(TemplateValues)?)
+
+
+class \nodoc\ iso _TestRawEmpty is UnitTest
+  fun name(): String => "Raw: empty raw block"
+
+  fun apply(h: TestHelper)? =>
+    h.assert_eq[String]("beforeafter",
+      Template.parse("before{{raw}}{{end}}after")?
+        .render(TemplateValues)?)
+
+
+class \nodoc\ iso _TestRawUnclosed is UnitTest
+  fun name(): String => "Raw: unclosed raw block is a parse error"
+
+  fun apply(h: TestHelper) =>
+    h.assert_error({()? =>
+      Template.parse("{{raw}}content without end")?
+    })
+    // Missing end entirely
+    h.assert_error({()? =>
+      Template.parse("{{raw}}{{ stuff }}")?
+    })
+
+
+class \nodoc\ iso _TestRawMinimal is UnitTest
+  fun name(): String => "Raw: minimal forms with and without whitespace"
+
+  fun apply(h: TestHelper)? =>
+    // No whitespace
+    h.assert_eq[String]("x",
+      Template.parse("{{raw}}x{{end}}")?.render(TemplateValues)?)
+    // Whitespace in tags
+    h.assert_eq[String]("x",
+      Template.parse("{{ raw }}x{{ end }}")?.render(TemplateValues)?)
+    // Whitespace in raw tag only
+    h.assert_eq[String]("x",
+      Template.parse("{{ raw }}x{{end}}")?.render(TemplateValues)?)
+
+
+class \nodoc\ iso _TestRawWithBraces is UnitTest
+  fun name(): String => "Raw: content with single braces and non-end blocks"
+
+  fun apply(h: TestHelper)? =>
+    // Single braces pass through
+    h.assert_eq[String]("a{b}c",
+      Template.parse("{{raw}}a{b}c{{end}}")?.render(TemplateValues)?)
+    // Non-end {{ }} blocks inside raw are literal
+    h.assert_eq[String]("{{ if x }}",
+      Template.parse("{{raw}}{{ if x }}{{end}}")?.render(TemplateValues)?)
+    // {{ for ... }} inside raw is literal
+    h.assert_eq[String]("{{ for i in items }}{{ i }}",
+      Template.parse("{{raw}}{{ for i in items }}{{ i }}{{end}}")?
         .render(TemplateValues)?)
 
 

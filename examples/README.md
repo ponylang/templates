@@ -6,6 +6,10 @@ Each subdirectory is a self-contained Pony program demonstrating a different par
 
 Parses a template with a single placeholder, binds a value, and renders the result. Demonstrates the core workflow: `Template.parse()`, `TemplateValues`, and `Template.render()`. Start here if you're new to the library.
 
+## [raw-example](raw-example/)
+
+Uses `{{raw}}...{{end}}` syntax to emit literal text without interpreting `{{ }}` sequences inside it. Useful when the template output itself contains delimiter syntax — for example, generating Mustache templates or documentation about this library. Shows basic raw output and raw blocks combined with trim markers.
+
 ## [comments-example](comments-example/)
 
 Uses `{{! ... }}` syntax to add comments to templates. Comments are stripped from the output entirely, so they're useful for documenting template logic without affecting rendered text. Shows basic comments and comments combined with trim markers inside loops.
