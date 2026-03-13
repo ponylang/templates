@@ -653,7 +653,7 @@ class \nodoc\ iso _StmtParserTest is UnitTest
 // ---------------------------------------------------------------------------
 
 class \nodoc\ iso _TestTemplateValuesStore is UnitTest
-  fun name(): String => "TemplateValues store and retrieve"
+  fun name(): String => "TemplateValues: store and retrieve"
 
   fun apply(h: TestHelper)? =>
     let values = TemplateValues
@@ -664,7 +664,7 @@ class \nodoc\ iso _TestTemplateValuesStore is UnitTest
 
 
 class \nodoc\ iso _TestTemplateValuesParentChain is UnitTest
-  fun name(): String => "TemplateValues parent chain scoping"
+  fun name(): String => "TemplateValues: parent chain scoping"
 
   fun apply(h: TestHelper)? =>
     let parent = TemplateValues
@@ -685,7 +685,7 @@ class \nodoc\ iso _TestTemplateValuesParentChain is UnitTest
 
 
 class \nodoc\ iso _TestTemplateValuesLookup is UnitTest
-  fun name(): String => "TemplateValues _lookup with dotted paths"
+  fun name(): String => "TemplateValues: _lookup with dotted paths"
 
   fun apply(h: TestHelper)? =>
     let values = TemplateValues
@@ -729,7 +729,7 @@ class \nodoc\ iso _PropTemplateValuesRoundtrip is Property1[String]
 class \nodoc\ iso _PropTemplateValuesOverrideShadows
   is Property1[(String, String, String)]
   fun name(): String =>
-    "TemplateValues override shadows parent"
+    "TemplateValues: override shadows parent"
 
   fun gen(): Generator[(String, String, String)] =>
     Generators.zip3[String, String, String](
