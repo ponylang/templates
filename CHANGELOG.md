@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file. This projec
 
 ### Added
 
+- Add public `scope()` method to TemplateValues ([PR #77](https://github.com/ponylang/templates/pull/77))
 
 ### Changed
 
