@@ -232,6 +232,14 @@ class box TemplateValue
 
 
 class TemplateValues
+  """
+  A scoped key-value store for template rendering. Values are stored as
+  `TemplateValue` entries and looked up by name. Lookups check the local
+  scope first, then walk up the parent chain.
+
+  Use `scope()` to create a writable child that inherits all values from
+  this set without copying. Use `update()` and `unescaped()` to add values.
+  """
   let _parent: (TemplateValues box | None)
   let _values: Map[String, TemplateValue]
 
@@ -265,6 +273,11 @@ class TemplateValues
     value
 
   fun ref update(name: String, value: (String | TemplateValue)) =>
+    """
+    Store a value under the given name. String values are wrapped in a
+    `TemplateValue` automatically. This is also the target of Pony's
+    sugar for `values("key") = "value"`.
+    """
     _values(name) = match value
     | let string: String => TemplateValue(string)
     | let template_value: TemplateValue => template_value
@@ -278,6 +291,14 @@ class TemplateValues
     pass the result to `update()`.
     """
     _values(name) = TemplateValue.unescaped(value)
+
+  fun box scope(): TemplateValues =>
+    """
+    Create an empty writable child scope backed by this value set as a
+    read-only parent. Writes go to the child; lookups that miss in the
+    child fall through to the parent.
+    """
+    TemplateValues._create(this, Map[String, TemplateValue])
 
   fun box _override(name: String, value: TemplateValue): TemplateValues =>
     let values = Map[String, TemplateValue]

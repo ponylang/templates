@@ -24,6 +24,16 @@ actor \nodoc\ Main is TestList
     test(Property1UnitTest[(String, String, String)](
       _PropTemplateValuesOverrideShadows))
 
+    // TemplateValues.scope() tests
+    test(_TestTemplateValuesScopeEmpty)
+    test(_TestTemplateValuesScopeFallthrough)
+    test(_TestTemplateValuesScopeShadow)
+    test(_TestTemplateValuesScopeMultiLevel)
+    test(Property1UnitTest[(String, String)](
+      _PropTemplateValuesScopeFallthrough))
+    test(Property1UnitTest[(String, String, String)](
+      _PropTemplateValuesScopeShadows))
+
     // Parser tests (Step 4)
     test(Property1UnitTest[String](_PropValidPropParsesToPropNode))
     test(Property1UnitTest[String](_PropValidPipeParsesToPipeNode))
@@ -736,6 +746,117 @@ class \nodoc\ iso _PropTemplateValuesOverrideShadows
     parent(n) = parent_val
     let child = parent._override(n, TemplateValue(child_val))
     h.assert_eq[String](child_val, child(n)?.string()?)
+
+
+// ---------------------------------------------------------------------------
+// TemplateValues.scope() tests
+// ---------------------------------------------------------------------------
+
+class \nodoc\ iso _TestTemplateValuesScopeEmpty is UnitTest
+  fun name(): String => "TemplateValues scope: empty child is writable"
+
+  fun apply(h: TestHelper)? =>
+    let parent = TemplateValues
+    let child = parent.scope()
+    child("key") = "value"
+    h.assert_eq[String]("value", child("key")?.string()?)
+
+
+class \nodoc\ iso _TestTemplateValuesScopeFallthrough is UnitTest
+  fun name(): String => "TemplateValues scope: lookups fall through to parent"
+
+  fun apply(h: TestHelper)? =>
+    let parent = TemplateValues
+    parent("color") = "blue"
+    let child = parent.scope()
+    h.assert_eq[String]("blue", child("color")?.string()?)
+
+
+class \nodoc\ iso _TestTemplateValuesScopeShadow is UnitTest
+  fun name(): String => "TemplateValues scope: child shadows parent"
+
+  fun apply(h: TestHelper)? =>
+    let parent = TemplateValues
+    parent("key") = "parent_value"
+    let child = parent.scope()
+    child("key") = "child_value"
+
+    // Child sees its own value
+    h.assert_eq[String]("child_value", child("key")?.string()?)
+    // Parent is unchanged
+    h.assert_eq[String]("parent_value", parent("key")?.string()?)
+
+
+class \nodoc\ iso _TestTemplateValuesScopeMultiLevel is UnitTest
+  fun name(): String => "TemplateValues scope: multi-level chain"
+
+  fun apply(h: TestHelper)? =>
+    let grandparent = TemplateValues
+    grandparent("a") = "from_grandparent"
+    let parent = grandparent.scope()
+    parent("b") = "from_parent"
+    let child = parent.scope()
+    child("c") = "from_child"
+
+    // Child sees all three levels
+    h.assert_eq[String]("from_grandparent", child("a")?.string()?)
+    h.assert_eq[String]("from_parent", child("b")?.string()?)
+    h.assert_eq[String]("from_child", child("c")?.string()?)
+
+    // Missing key errors through entire chain
+    h.assert_error({() ? =>
+      let gp = TemplateValues
+      let p = gp.scope()
+      let c = p.scope()
+      c("missing")?
+    })
+
+
+class \nodoc\ iso _PropTemplateValuesScopeFallthrough
+  is Property1[(String, String)]
+  fun name(): String =>
+    "TemplateValues scope: parent values readable from child"
+
+  fun gen(): Generator[(String, String)] =>
+    Generators.zip2[String, String](
+      _Generators.valid_name(),
+      _Generators.template_value_string())
+
+  fun ref property(
+    sample: (String, String),
+    h: PropertyHelper)
+  ? =>
+    (let n, let v) = sample
+    let parent = TemplateValues
+    parent(n) = v
+    let child = parent.scope()
+    h.assert_eq[String](v, child(n)?.string()?)
+
+
+class \nodoc\ iso _PropTemplateValuesScopeShadows
+  is Property1[(String, String, String)]
+  fun name(): String =>
+    "TemplateValues scope: child shadows parent, parent unchanged"
+
+  fun gen(): Generator[(String, String, String)] =>
+    Generators.zip3[String, String, String](
+      _Generators.valid_name(),
+      _Generators.template_value_string(),
+      _Generators.template_value_string())
+
+  fun ref property(
+    sample: (String, String, String),
+    h: PropertyHelper)
+  ? =>
+    (let n, let parent_val, let child_val) = sample
+    let parent = TemplateValues
+    parent(n) = parent_val
+    let child = parent.scope()
+    child(n) = child_val
+    // Child sees child value
+    h.assert_eq[String](child_val, child(n)?.string()?)
+    // Parent retains original
+    h.assert_eq[String](parent_val, parent(n)?.string()?)
 
 
 // ---------------------------------------------------------------------------
