@@ -65,8 +65,35 @@ class val HtmlTemplate
     automatically escaped based on HTML context unless the value was
     created with `TemplateValue.unescaped`.
     """
-    let tracker: _HtmlContextTracker ref = _HtmlContextTracker
-    _render_parts(_parts, values, tracker)?
+    let sink: _StringSink ref = _StringSink
+    let escaper: _HtmlEscaper ref = _HtmlEscaper(_HtmlContextTracker)
+    _TemplateWalk.walk(_parts, values, sink, escaper)?
+    sink.result()
+
+  fun render_to(sink: TemplateSink ref, values: TemplateValues box)? =>
+    """
+    Walk the template and drive the given sink with alternating `literal` and
+    `dynamic_value` calls. Dynamic values are already escaped based on HTML
+    context — the sink receives final, safe strings. See `TemplateSink` for
+    the interleaving guarantee.
+    """
+    let escaper: _HtmlEscaper ref = _HtmlEscaper(_HtmlContextTracker)
+    _TemplateWalk.walk(_parts, values, sink, escaper)?
+
+  fun render_split(
+    values: TemplateValues box
+  ): (Array[String] val, Array[String] val)? =>
+    """
+    Render the template and return the static literal segments and dynamic
+    value segments as separate arrays. Dynamic values are already escaped
+    based on HTML context. For N dynamic insertions, the statics array has
+    N+1 entries. Concatenating `statics(0) + dynamics(0) + statics(1) +
+    dynamics(1) + ... + statics(N)` produces the same result as `render()`.
+    """
+    let sink: _SplitSink ref = _SplitSink
+    let escaper: _HtmlEscaper ref = _HtmlEscaper(_HtmlContextTracker)
+    _TemplateWalk.walk(_parts, values, sink, escaper)?
+    sink.result()
 
   fun tag _validate(parts: Array[_Part] box)? =>
     let tracker: _HtmlContextTracker ref = _HtmlContextTracker
@@ -122,103 +149,3 @@ class val HtmlTemplate
     | CtxError => error
     end
 
-  fun tag _render_parts(
-    parts: Array[_Part] box,
-    values: TemplateValues box,
-    tracker: _HtmlContextTracker ref
-  ): String? =>
-    var result = ByteArrays()
-    for part in parts.values() do
-      match part
-      | (_Literal, let text: String) =>
-        tracker.feed(text)
-        tracker.feed_close_tag(text)
-        result = result + text
-      | let pipe: _Pipe box =>
-        var current: String = match pipe.source
-        | let s: String => s
-        | let p: _PropNode =>
-          try values._lookup(p)?.string()? else "" end
-        end
-        for (filter, args) in pipe.filters.values() do
-          match filter
-          | let f: Filter val =>
-            current = f(current)
-          | let f: Filter2 val =>
-            let a1 = try
-              match args(0)?
-              | let s: String => s
-              | let p: _PropNode =>
-                try values._lookup(p)?.string()? else "" end
-              end
-            else "" end
-            current = f(current, a1)
-          | let f: Filter3 val =>
-            let a1 = try
-              match args(0)?
-              | let s: String => s
-              | let p: _PropNode =>
-                try values._lookup(p)?.string()? else "" end
-              end
-            else "" end
-            let a2 = try
-              match args(1)?
-              | let s: String => s
-              | let p: _PropNode =>
-                try values._lookup(p)?.string()? else "" end
-              end
-            else "" end
-            current = f(current, a1, a2)
-          end
-        end
-        // Pipe results are always escaped — no TemplateValue to check
-        result = result + _HtmlEscapingRenderer.render(
-          tracker.context(), current)
-      | let prop: _PropNode =>
-        let tv = try values._lookup(prop)? else
-          // Missing value — render empty, same as Template
-          result = result + ""
-          continue
-        end
-        let raw = try tv.string()? else "" end
-        result = result + tv.renderable().render(tracker.context(), raw)
-      | let if': _If box =>
-        if
-          try
-            values._lookup(if'.value)?._is_truthy()
-          else
-            false
-          end
-        then
-          result = result + _render_parts(if'.body, values, tracker)?
-        else
-          match if'.else_body
-          | let eb: Array[_Part] box =>
-            result = result + _render_parts(eb, values, tracker)?
-          end
-        end
-      | let ifnot: _IfNot box =>
-        if
-          try
-            values._lookup(ifnot.value)?._is_truthy()
-          else
-            false
-          end
-        then
-          match ifnot.else_body
-          | let eb: Array[_Part] box =>
-            result = result + _render_parts(eb, values, tracker)?
-          end
-        else
-          result = result + _render_parts(ifnot.body, values, tracker)?
-        end
-      | let loop: _Loop box =>
-        for value in values._lookup(loop.source)?.values() do
-          let body_values = values._override(loop.target, value)
-          result = result + _render_parts(loop.body, body_values, tracker)?
-        end
-      | let blk: _Block box =>
-        result = result + _render_parts(blk.body, values, tracker)?
-      end
-    end
-    result.string()

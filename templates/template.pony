@@ -54,6 +54,23 @@ literal text interspersed with `{{ ... }}` blocks. Supported block types:
 * **Comments**: `{{! ... }}` is ignored during rendering. Everything between `!`
   and `}}` is discarded. Comments can appear anywhere a normal block can appear,
   and trim markers work as expected: `{{!- comment -}}`.
+
+## Rendering modes
+
+Both `Template` and `HtmlTemplate` support three rendering methods:
+
+* `render(values)` returns the complete output as a single `String`.
+* `render_to(sink, values)` drives a caller-supplied `TemplateSink` with
+  separate `literal` and `dynamic_value` calls, enabling use cases like
+  tagged template literals or custom output assembly.
+  Calls strictly alternate between `literal` and `dynamic_value`, starting
+  and ending with `literal` — for N dynamic insertions, exactly N+1 literal
+  calls are made. Control flow subtrees (`if`, `ifnot`, `for`) collapse into
+  a single `dynamic_value` call; `block` is transparent (its literals merge
+  with surroundings).
+* `render_split(values)` returns `(Array[String] val, Array[String] val)` —
+  the statics and dynamics arrays separately, maintaining the same
+  interleaving guarantee.
 """
 
 use "collections"
@@ -370,6 +387,53 @@ class box _BlockScan
     kind = kind'
 
 
+interface ref TemplateSink
+  """
+  Receives the output of a template walk as a sequence of literal and dynamic
+  segments. Calls strictly alternate between `literal` and `dynamic_value`,
+  starting and ending with `literal`. For N dynamic insertions, exactly N+1
+  literal calls are made. Empty strings are used where needed to maintain this
+  interleaving invariant.
+
+  Control flow subtrees (`if`, `ifnot`, `for`) collapse into a single
+  `dynamic_value` call containing the fully rendered branch or loop output.
+  `block` is transparent — its literal content merges into the surrounding
+  literal segments.
+  """
+  fun ref literal(text: String)
+    """
+    Called with a static template segment. May be an empty string when two
+    dynamic values are adjacent or at template boundaries.
+    """
+
+  fun ref dynamic_value(value: String)
+    """
+    Called with a resolved (and, for `HtmlTemplate`, already-escaped) dynamic
+    value. For control flow subtrees, contains the fully rendered branch or
+    loop output as a single string.
+    """
+
+
+class ref _SplitSink is TemplateSink
+  """
+  Collects literal and dynamic segments into separate arrays for
+  `render_split()`.
+  """
+  var _statics: Array[String] iso = recover iso Array[String] end
+  var _dynamics: Array[String] iso = recover iso Array[String] end
+
+  fun ref literal(text: String) =>
+    _statics.push(text)
+
+  fun ref dynamic_value(value: String) =>
+    _dynamics.push(value)
+
+  fun ref result(): (Array[String] val, Array[String] val) =>
+    let s: Array[String] val = _statics = recover iso Array[String] end
+    let d: Array[String] val = _dynamics = recover iso Array[String] end
+    (s, d)
+
+
 class val Template
   let _parts: Array[_Part] box
 
@@ -390,95 +454,34 @@ class val Template
 
   fun render(values: TemplateValues box): String? =>
     """
-    Fills in the given values into template.
+    Render the template with the given values and return the result as a
+    single string.
     """
-    _render_parts(_parts, values)?
+    let sink: _StringSink ref = _StringSink
+    let escaper: _IdentityEscaper ref = _IdentityEscaper
+    _TemplateWalk.walk(_parts, values, sink, escaper)?
+    sink.result()
 
-  fun tag _render_parts(parts: Array[_Part] box, values: TemplateValues box): String? =>
-    var result = ByteArrays()
-    for part in parts.values() do
-      match part
-      | (_Literal, let value: String) => result = result + value
-      | let pipe: _Pipe box =>
-        var current: String = match pipe.source
-        | let s: String => s
-        | let p: _PropNode =>
-          try values._lookup(p)?.string()? else "" end
-        end
-        for (filter, args) in pipe.filters.values() do
-          // Resolve arguments
-          match filter
-          | let f: Filter val =>
-            current = f(current)
-          | let f: Filter2 val =>
-            let a1 = try
-              match args(0)?
-              | let s: String => s
-              | let p: _PropNode =>
-                try values._lookup(p)?.string()? else "" end
-              end
-            else "" end
-            current = f(current, a1)
-          | let f: Filter3 val =>
-            let a1 = try
-              match args(0)?
-              | let s: String => s
-              | let p: _PropNode =>
-                try values._lookup(p)?.string()? else "" end
-              end
-            else "" end
-            let a2 = try
-              match args(1)?
-              | let s: String => s
-              | let p: _PropNode =>
-                try values._lookup(p)?.string()? else "" end
-              end
-            else "" end
-            current = f(current, a1, a2)
-          end
-        end
-        result = result + current
-      | let prop: _PropNode =>
-        let substitution = try values._lookup(prop)?.string()?
-        else "" end
-        result = result + substitution
-      | let if': _If box =>
-        if
-          try
-            values._lookup(if'.value)?._is_truthy()
-          else
-            false
-          end
-        then
-          result = result + _render_parts(if'.body, values)?
-        else
-          match if'.else_body
-          | let eb: Array[_Part] box =>
-            result = result + _render_parts(eb, values)?
-          end
-        end
-      | let ifnot: _IfNot box =>
-        if
-          try
-            values._lookup(ifnot.value)?._is_truthy()
-          else
-            false
-          end
-        then
-          match ifnot.else_body
-          | let eb: Array[_Part] box =>
-            result = result + _render_parts(eb, values)?
-          end
-        else
-          result = result + _render_parts(ifnot.body, values)?
-        end
-      | let loop: _Loop box =>
-        for value in values._lookup(loop.source)?.values() do
-          let body_values = values._override(loop.target, value)
-          result = result + _render_parts(loop.body, body_values)?
-        end
-      | let blk: _Block box =>
-        result = result + _render_parts(blk.body, values)?
-      end
-    end
-    result.string()
+  fun render_to(sink: TemplateSink ref, values: TemplateValues box)? =>
+    """
+    Walk the template and drive the given sink with alternating `literal` and
+    `dynamic_value` calls. Values are not escaped — they pass through as-is.
+    See `TemplateSink` for the interleaving guarantee.
+    """
+    let escaper: _IdentityEscaper ref = _IdentityEscaper
+    _TemplateWalk.walk(_parts, values, sink, escaper)?
+
+  fun render_split(
+    values: TemplateValues box
+  ): (Array[String] val, Array[String] val)? =>
+    """
+    Render the template and return the static literal segments and dynamic
+    value segments as separate arrays. For N dynamic insertions, the statics
+    array has N+1 entries. Concatenating `statics(0) + dynamics(0) +
+    statics(1) + dynamics(1) + ... + statics(N)` produces the same result
+    as `render()`.
+    """
+    let sink: _SplitSink ref = _SplitSink
+    let escaper: _IdentityEscaper ref = _IdentityEscaper
+    _TemplateWalk.walk(_parts, values, sink, escaper)?
+    sink.result()
