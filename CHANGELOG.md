@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file. This projec
 
 ### Added
 
+- Add sink/visitor interface for split rendering ([PR #83](https://github.com/ponylang/templates/pull/83))
 
 ### Changed
 
