@@ -37,3 +37,7 @@ Uses `{{-` and `-}}` trim markers to strip whitespace around tags. Shows how sel
 ## [html-escaping-example](html-escaping-example/)
 
 Uses `HtmlTemplate` for automatic context-aware HTML escaping. Shows how variable output is escaped differently depending on HTML position (text content, URL attributes, etc.) and how to bypass escaping for trusted content with `TemplateValue.unescaped` and `TemplateValues.unescaped`.
+
+## [split-render-example](split-render-example/)
+
+Demonstrates `render_split()` and `render_to()` — the split rendering API that separates template output into static literal segments and dynamic value segments. Shows `render_split()` returning separate arrays, `render_to()` driving a custom `TemplateSink` with alternating `literal`/`dynamic_value` calls, and `HtmlTemplate.render_split()` providing already-escaped dynamic values.

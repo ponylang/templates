@@ -274,6 +274,47 @@ actor \nodoc\ Main is TestList
     test(_TestHtmlTemplateRcdataContext)
     test(Property1UnitTest[String](_PropHtmlTemplateEscapesInText))
 
+    // render_split tests
+    test(_TestRenderSplitEmpty)
+    test(_TestRenderSplitLiteralOnly)
+    test(_TestRenderSplitSingleVar)
+    test(_TestRenderSplitAdjacentVars)
+    test(_TestRenderSplitMissingVar)
+    test(_TestRenderSplitIfCollapsed)
+    test(_TestRenderSplitIfElseCollapsed)
+    test(_TestRenderSplitIfNotCollapsed)
+    test(_TestRenderSplitLoopCollapsed)
+    test(_TestRenderSplitEmptyLoop)
+    test(_TestRenderSplitBlockTransparent)
+    test(_TestRenderSplitNestedControlFlow)
+    test(_TestRenderSplitPipe)
+    test(Property1UnitTest[(String, String, String)](
+      _PropRenderSplitRoundtrip))
+    test(Property1UnitTest[(String, String, String)](
+      _PropRenderSplitInterleaving))
+    test(Property1UnitTest[(String, String, String)](
+      _PropHtmlRenderSplitRoundtrip))
+
+    // render_to tests
+    test(_TestRenderToAlternation)
+    test(_TestRenderToContent)
+    test(_TestRenderToIfCollapsed)
+    test(_TestRenderToLoopCollapsed)
+    test(_TestRenderToEmpty)
+    test(_TestRenderToLiteralOnly)
+    test(_TestRenderToPipe)
+    test(_TestRenderToMissingVar)
+    test(_TestRenderToIfNotCollapsed)
+    test(_TestRenderToAdjacentVars)
+    test(_TestRenderToBlockTransparent)
+    test(_TestRenderToNestedControlFlow)
+
+    // HTML render_split / render_to tests
+    test(_TestHtmlRenderSplitEscaped)
+    test(_TestHtmlRenderToEscaped)
+    test(_TestHtmlRenderSplitUnescaped)
+    test(_TestHtmlRenderSplitIfCollapsed)
+
 
 // ---------------------------------------------------------------------------
 // Generators (Step 2)
@@ -4295,4 +4336,734 @@ class \nodoc\ iso _PropHtmlTemplateEscapesInText is Property1[String]
         | '>' => h.fail("unescaped > in output")
         end
       end
+    end
+
+
+// ---------------------------------------------------------------------------
+// render_split unit tests
+// ---------------------------------------------------------------------------
+
+class \nodoc\ iso _TestRenderSplitEmpty is UnitTest
+  fun name(): String => "render_split: empty template"
+
+  fun apply(h: TestHelper) =>
+    try
+      let t = Template.parse("")?
+      (let s, let d) = t.render_split(TemplateValues)?
+      h.assert_eq[USize](1, s.size())
+      h.assert_eq[USize](0, d.size())
+      h.assert_eq[String]("", s(0)?)
+    else
+      h.fail("unexpected error")
+    end
+
+
+class \nodoc\ iso _TestRenderSplitLiteralOnly is UnitTest
+  fun name(): String => "render_split: literal-only template"
+
+  fun apply(h: TestHelper) =>
+    try
+      let t = Template.parse("hello world")?
+      (let s, let d) = t.render_split(TemplateValues)?
+      h.assert_eq[USize](1, s.size())
+      h.assert_eq[USize](0, d.size())
+      h.assert_eq[String]("hello world", s(0)?)
+    else
+      h.fail("unexpected error")
+    end
+
+
+class \nodoc\ iso _TestRenderSplitSingleVar is UnitTest
+  fun name(): String => "render_split: single variable"
+
+  fun apply(h: TestHelper) =>
+    try
+      let t = Template.parse("{{ x }}")?
+      let v = TemplateValues
+      v("x") = "val"
+      (let s, let d) = t.render_split(v)?
+      h.assert_eq[USize](2, s.size())
+      h.assert_eq[USize](1, d.size())
+      h.assert_eq[String]("", s(0)?)
+      h.assert_eq[String]("", s(1)?)
+      h.assert_eq[String]("val", d(0)?)
+    else
+      h.fail("unexpected error")
+    end
+
+
+class \nodoc\ iso _TestRenderSplitAdjacentVars is UnitTest
+  fun name(): String => "render_split: adjacent variables"
+
+  fun apply(h: TestHelper) =>
+    try
+      let t = Template.parse("{{ x }}{{ y }}")?
+      let v = TemplateValues
+      v("x") = "X"
+      v("y") = "Y"
+      (let s, let d) = t.render_split(v)?
+      h.assert_eq[USize](3, s.size())
+      h.assert_eq[USize](2, d.size())
+      h.assert_eq[String]("", s(0)?)
+      h.assert_eq[String]("", s(1)?)
+      h.assert_eq[String]("", s(2)?)
+      h.assert_eq[String]("X", d(0)?)
+      h.assert_eq[String]("Y", d(1)?)
+    else
+      h.fail("unexpected error")
+    end
+
+
+class \nodoc\ iso _TestRenderSplitMissingVar is UnitTest
+  fun name(): String => "render_split: missing variable renders empty dynamic"
+
+  fun apply(h: TestHelper) =>
+    try
+      let t = Template.parse("a{{ x }}b")?
+      (let s, let d) = t.render_split(TemplateValues)?
+      h.assert_eq[USize](2, s.size())
+      h.assert_eq[USize](1, d.size())
+      h.assert_eq[String]("a", s(0)?)
+      h.assert_eq[String]("b", s(1)?)
+      h.assert_eq[String]("", d(0)?)
+    else
+      h.fail("unexpected error")
+    end
+
+
+class \nodoc\ iso _TestRenderSplitIfCollapsed is UnitTest
+  fun name(): String => "render_split: if block collapses into one dynamic"
+
+  fun apply(h: TestHelper) =>
+    try
+      let t = Template.parse("a{{ if flag }}YES{{ end }}b")?
+      let v = TemplateValues
+      v("flag") = "true"
+      (let s, let d) = t.render_split(v)?
+      h.assert_eq[USize](2, s.size())
+      h.assert_eq[USize](1, d.size())
+      h.assert_eq[String]("a", s(0)?)
+      h.assert_eq[String]("b", s(1)?)
+      h.assert_eq[String]("YES", d(0)?)
+    else
+      h.fail("unexpected error")
+    end
+
+
+class \nodoc\ iso _TestRenderSplitIfElseCollapsed is UnitTest
+  fun name(): String => "render_split: if/else renders chosen branch"
+
+  fun apply(h: TestHelper) =>
+    try
+      let t = Template.parse("{{ if flag }}yes{{ else }}no{{ end }}")?
+      // Truthy path
+      let v1 = TemplateValues
+      v1("flag") = "true"
+      (let s1, let d1) = t.render_split(v1)?
+      h.assert_eq[USize](2, s1.size())
+      h.assert_eq[USize](1, d1.size())
+      h.assert_eq[String]("yes", d1(0)?)
+
+      // Falsy path
+      (let s2, let d2) = t.render_split(TemplateValues)?
+      h.assert_eq[USize](2, s2.size())
+      h.assert_eq[USize](1, d2.size())
+      h.assert_eq[String]("no", d2(0)?)
+    else
+      h.fail("unexpected error")
+    end
+
+
+class \nodoc\ iso _TestRenderSplitIfNotCollapsed is UnitTest
+  fun name(): String => "render_split: ifnot collapses into one dynamic"
+
+  fun apply(h: TestHelper) =>
+    try
+      let t = Template.parse("a{{ ifnot flag }}NO{{ else }}YES{{ end }}b")?
+      // flag absent → ifnot body ("NO")
+      (let s1, let d1) = t.render_split(TemplateValues)?
+      h.assert_eq[USize](2, s1.size())
+      h.assert_eq[USize](1, d1.size())
+      h.assert_eq[String]("a", s1(0)?)
+      h.assert_eq[String]("b", s1(1)?)
+      h.assert_eq[String]("NO", d1(0)?)
+
+      // flag present → else body ("YES")
+      let v2 = TemplateValues
+      v2("flag") = "true"
+      (let s2, let d2) = t.render_split(v2)?
+      h.assert_eq[USize](2, s2.size())
+      h.assert_eq[USize](1, d2.size())
+      h.assert_eq[String]("YES", d2(0)?)
+    else
+      h.fail("unexpected error")
+    end
+
+
+class \nodoc\ iso _TestRenderSplitLoopCollapsed is UnitTest
+  fun name(): String => "render_split: loop collapses into one dynamic"
+
+  fun apply(h: TestHelper) =>
+    try
+      let t = Template.parse("X{{ for i in items }}[{{ i }}]{{ end }}Y")?
+      let v = TemplateValues
+      let items = Array[TemplateValue]
+      items.push(TemplateValue("a"))
+      items.push(TemplateValue("b"))
+      v("items") = TemplateValue(items)
+      (let s, let d) = t.render_split(v)?
+      h.assert_eq[USize](2, s.size())
+      h.assert_eq[USize](1, d.size())
+      h.assert_eq[String]("X", s(0)?)
+      h.assert_eq[String]("Y", s(1)?)
+      h.assert_eq[String]("[a][b]", d(0)?)
+    else
+      h.fail("unexpected error")
+    end
+
+
+class \nodoc\ iso _TestRenderSplitEmptyLoop is UnitTest
+  fun name(): String => "render_split: empty loop produces empty dynamic"
+
+  fun apply(h: TestHelper) =>
+    try
+      let t = Template.parse("A{{ for i in items }}{{ i }}{{ end }}B")?
+      let v = TemplateValues
+      let items = Array[TemplateValue]
+      v("items") = TemplateValue(items)
+      (let s, let d) = t.render_split(v)?
+      h.assert_eq[USize](2, s.size())
+      h.assert_eq[USize](1, d.size())
+      h.assert_eq[String]("A", s(0)?)
+      h.assert_eq[String]("B", s(1)?)
+      h.assert_eq[String]("", d(0)?)
+    else
+      h.fail("unexpected error")
+    end
+
+
+class \nodoc\ iso _TestRenderSplitBlockTransparent is UnitTest
+  fun name(): String => "render_split: block is transparent (literals merge)"
+
+  fun apply(h: TestHelper) =>
+    try
+      let partials = recover val
+        let m = Map[String, String]
+        m("base") = "AA{{ block content }}default{{ end }}BB"
+        m
+      end
+      let ctx = TemplateContext(where partials' = partials)
+      let t = Template.parse("{{ extends \"base\" }}", ctx)?
+      (let s, let d) = t.render_split(TemplateValues)?
+      // Block without override → default content is literal, merged
+      h.assert_eq[USize](1, s.size())
+      h.assert_eq[USize](0, d.size())
+      h.assert_eq[String]("AAdefaultBB", s(0)?)
+    else
+      h.fail("unexpected error")
+    end
+
+
+class \nodoc\ iso _TestRenderSplitNestedControlFlow is UnitTest
+  fun name(): String =>
+    "render_split: nested control flow collapses into outer dynamic"
+
+  fun apply(h: TestHelper) =>
+    try
+      let t = Template.parse(
+        "S{{ if flag }}{{ if inner }}A{{ end }}{{ end }}E")?
+      let v = TemplateValues
+      v("flag") = "y"
+      v("inner") = "y"
+      (let s, let d) = t.render_split(v)?
+      h.assert_eq[USize](2, s.size())
+      h.assert_eq[USize](1, d.size())
+      h.assert_eq[String]("S", s(0)?)
+      h.assert_eq[String]("E", s(1)?)
+      h.assert_eq[String]("A", d(0)?)
+    else
+      h.fail("unexpected error")
+    end
+
+
+class \nodoc\ iso _TestRenderSplitPipe is UnitTest
+  fun name(): String => "render_split: pipe in split produces filtered dynamic"
+
+  fun apply(h: TestHelper) =>
+    try
+      let t = Template.parse("pre{{ name | upper }}post")?
+      let v = TemplateValues
+      v("name") = "hello"
+      (let s, let d) = t.render_split(v)?
+      h.assert_eq[USize](2, s.size())
+      h.assert_eq[USize](1, d.size())
+      h.assert_eq[String]("pre", s(0)?)
+      h.assert_eq[String]("post", s(1)?)
+      h.assert_eq[String]("HELLO", d(0)?)
+    else
+      h.fail("unexpected error")
+    end
+
+
+// ---------------------------------------------------------------------------
+// render_split property-based tests
+// ---------------------------------------------------------------------------
+
+class \nodoc\ iso _PropRenderSplitRoundtrip
+  is Property1[(String, String, String)]
+  """
+  For a template with two variables, recombining render_split output
+  produces the same string as render().
+  """
+  fun name(): String => "render_split: roundtrip matches render()"
+
+  fun gen(): Generator[(String, String, String)] =>
+    Generators.map3[String, String, String, (String, String, String)](
+      _Generators.valid_name(),
+      _Generators.valid_name(),
+      Generators.ascii(0, 30),
+      {(n1, n2, value) => (n1, n2, value) })
+
+  fun property(arg1: (String, String, String), h: PropertyHelper) =>
+    (let n1, let n2, let value) = arg1
+    if n1 == n2 then return end
+    try
+      let t = Template.parse(
+        "pre{{ " + n1 + " }}mid{{ " + n2 + " }}post")?
+      let v = TemplateValues
+      v(n1) = value
+      v(n2) = value + "2"
+      let rendered = t.render(v)?
+      (let s, let d) = t.render_split(v)?
+      let recombined = recover val
+        let buf = String
+        for (i, stat) in s.pairs() do
+          buf.append(stat)
+          try buf.append(d(i)?) end
+        end
+        buf
+      end
+      h.assert_eq[String](rendered, recombined)
+    end
+
+
+class \nodoc\ iso _PropRenderSplitInterleaving
+  is Property1[(String, String, String)]
+  """
+  For a template with two variables, statics.size() ==
+  dynamics.size() + 1.
+  """
+  fun name(): String => "render_split: statics.size() == dynamics.size() + 1"
+
+  fun gen(): Generator[(String, String, String)] =>
+    Generators.map3[String, String, String, (String, String, String)](
+      _Generators.valid_name(),
+      _Generators.valid_name(),
+      Generators.ascii(0, 30),
+      {(n1, n2, value) => (n1, n2, value) })
+
+  fun property(arg1: (String, String, String), h: PropertyHelper) =>
+    (let n1, let n2, let value) = arg1
+    if n1 == n2 then return end
+    try
+      let t = Template.parse(
+        "pre{{ " + n1 + " }}mid{{ " + n2 + " }}post")?
+      let v = TemplateValues
+      v(n1) = value
+      v(n2) = value
+      (let s, let d) = t.render_split(v)?
+      h.assert_eq[USize](d.size() + 1, s.size())
+    end
+
+
+class \nodoc\ iso _PropHtmlRenderSplitRoundtrip
+  is Property1[(String, String, String)]
+  """
+  For an HtmlTemplate with two variables in text context, recombining
+  render_split output produces the same string as render().
+  """
+  fun name(): String => "HtmlTemplate render_split: roundtrip matches render()"
+
+  fun gen(): Generator[(String, String, String)] =>
+    Generators.map3[String, String, String, (String, String, String)](
+      _Generators.valid_name(),
+      _Generators.valid_name(),
+      Generators.ascii(0, 30),
+      {(n1, n2, value) => (n1, n2, value) })
+
+  fun property(arg1: (String, String, String), h: PropertyHelper) =>
+    (let n1, let n2, let value) = arg1
+    if n1 == n2 then return end
+    try
+      let t = HtmlTemplate.parse(
+        "<p>{{ " + n1 + " }}</p><p>{{ " + n2 + " }}</p>")?
+      let v = TemplateValues
+      v(n1) = value
+      v(n2) = value + "2"
+      let rendered = t.render(v)?
+      (let s, let d) = t.render_split(v)?
+      let recombined = recover val
+        let buf = String
+        for (i, stat) in s.pairs() do
+          buf.append(stat)
+          try buf.append(d(i)?) end
+        end
+        buf
+      end
+      h.assert_eq[String](rendered, recombined)
+    end
+
+
+// ---------------------------------------------------------------------------
+// render_to tests
+// ---------------------------------------------------------------------------
+
+class \nodoc\ iso _CountingSink is TemplateSink
+  """
+  Test sink that counts literal/dynamic calls and verifies alternation.
+  """
+  var literal_count: USize = 0
+  var dynamic_count: USize = 0
+  var _expect_literal: Bool = true
+  var alternation_ok: Bool = true
+
+  fun ref literal(text: String) =>
+    if not _expect_literal then alternation_ok = false end
+    literal_count = literal_count + 1
+    _expect_literal = false
+
+  fun ref dynamic_value(value: String) =>
+    if _expect_literal then alternation_ok = false end
+    dynamic_count = dynamic_count + 1
+    _expect_literal = true
+
+
+class \nodoc\ iso _TestRenderToAlternation is UnitTest
+  fun name(): String => "render_to: calls alternate literal/dynamic"
+
+  fun apply(h: TestHelper) =>
+    try
+      let t = Template.parse("a{{ x }}b{{ y }}c")?
+      let v = TemplateValues
+      v("x") = "X"
+      v("y") = "Y"
+      let sink: _CountingSink ref = _CountingSink
+      t.render_to(sink, v)?
+      h.assert_true(sink.alternation_ok, "alternation violated")
+      h.assert_eq[USize](3, sink.literal_count)
+      h.assert_eq[USize](2, sink.dynamic_count)
+    else
+      h.fail("unexpected error")
+    end
+
+
+class \nodoc\ iso _ContentSink is TemplateSink
+  """
+  Test sink that records all segments for content verification.
+  """
+  let literals: Array[String] = Array[String]
+  let dynamics: Array[String] = Array[String]
+
+  fun ref literal(text: String) =>
+    literals.push(text)
+
+  fun ref dynamic_value(value: String) =>
+    dynamics.push(value)
+
+
+class \nodoc\ iso _TestRenderToContent is UnitTest
+  fun name(): String => "render_to: literal and dynamic content correct"
+
+  fun apply(h: TestHelper) =>
+    try
+      let t = Template.parse("Hello {{ name }}!")?
+      let v = TemplateValues
+      v("name") = "world"
+      let sink: _ContentSink ref = _ContentSink
+      t.render_to(sink, v)?
+      h.assert_eq[USize](2, sink.literals.size())
+      h.assert_eq[USize](1, sink.dynamics.size())
+      h.assert_eq[String]("Hello ", sink.literals(0)?)
+      h.assert_eq[String]("!", sink.literals(1)?)
+      h.assert_eq[String]("world", sink.dynamics(0)?)
+    else
+      h.fail("unexpected error")
+    end
+
+
+// ---------------------------------------------------------------------------
+// HTML render_split / render_to tests
+// ---------------------------------------------------------------------------
+
+class \nodoc\ iso _TestHtmlRenderSplitEscaped is UnitTest
+  fun name(): String =>
+    "HtmlTemplate render_split: dynamic values are escaped"
+
+  fun apply(h: TestHelper) =>
+    try
+      let t = HtmlTemplate.parse("<p>{{ name }}</p>")?
+      let v = TemplateValues
+      v("name") = "<script>alert('xss')</script>"
+      (let s, let d) = t.render_split(v)?
+      h.assert_eq[USize](2, s.size())
+      h.assert_eq[USize](1, d.size())
+      h.assert_eq[String]("<p>", s(0)?)
+      h.assert_eq[String]("</p>", s(1)?)
+      // Dynamic must be escaped
+      h.assert_true(d(0)?.contains("&lt;"))
+      h.assert_false(d(0)?.contains("<script>"))
+    else
+      h.fail("unexpected error")
+    end
+
+
+class \nodoc\ iso _TestHtmlRenderToEscaped is UnitTest
+  fun name(): String =>
+    "HtmlTemplate render_to: dynamic values are escaped"
+
+  fun apply(h: TestHelper) =>
+    try
+      let t = HtmlTemplate.parse("<p>{{ name }}</p>")?
+      let v = TemplateValues
+      v("name") = "<b>bold</b>"
+      let sink: _ContentSink ref = _ContentSink
+      t.render_to(sink, v)?
+      h.assert_eq[USize](2, sink.literals.size())
+      h.assert_eq[USize](1, sink.dynamics.size())
+      h.assert_eq[String]("<p>", sink.literals(0)?)
+      h.assert_eq[String]("</p>", sink.literals(1)?)
+      // Dynamic must be escaped
+      h.assert_true(sink.dynamics(0)?.contains("&lt;"))
+      h.assert_false(sink.dynamics(0)?.contains("<b>"))
+    else
+      h.fail("unexpected error")
+    end
+
+
+class \nodoc\ iso _TestHtmlRenderSplitUnescaped is UnitTest
+  fun name(): String =>
+    "HtmlTemplate render_split: unescaped values bypass escaping"
+
+  fun apply(h: TestHelper) =>
+    try
+      let t = HtmlTemplate.parse("<p>{{ content }}</p>")?
+      let v = TemplateValues
+      v("content") = TemplateValue.unescaped("<em>bold</em>")
+      (let s, let d) = t.render_split(v)?
+      h.assert_eq[USize](2, s.size())
+      h.assert_eq[USize](1, d.size())
+      h.assert_eq[String]("<em>bold</em>", d(0)?)
+    else
+      h.fail("unexpected error")
+    end
+
+
+class \nodoc\ iso _TestRenderToIfCollapsed is UnitTest
+  fun name(): String => "render_to: if block collapses into one dynamic"
+
+  fun apply(h: TestHelper) =>
+    try
+      let t = Template.parse("a{{ if flag }}YES{{ end }}b")?
+      let v = TemplateValues
+      v("flag") = "true"
+      let sink: _CountingSink ref = _CountingSink
+      t.render_to(sink, v)?
+      h.assert_true(sink.alternation_ok, "alternation violated")
+      h.assert_eq[USize](2, sink.literal_count)
+      h.assert_eq[USize](1, sink.dynamic_count)
+    else
+      h.fail("unexpected error")
+    end
+
+
+class \nodoc\ iso _TestRenderToLoopCollapsed is UnitTest
+  fun name(): String => "render_to: loop collapses into one dynamic"
+
+  fun apply(h: TestHelper) =>
+    try
+      let t = Template.parse("X{{ for i in items }}[{{ i }}]{{ end }}Y")?
+      let v = TemplateValues
+      let items = Array[TemplateValue]
+      items.push(TemplateValue("a"))
+      items.push(TemplateValue("b"))
+      v("items") = TemplateValue(items)
+      let sink: _CountingSink ref = _CountingSink
+      t.render_to(sink, v)?
+      h.assert_true(sink.alternation_ok, "alternation violated")
+      h.assert_eq[USize](2, sink.literal_count)
+      h.assert_eq[USize](1, sink.dynamic_count)
+    else
+      h.fail("unexpected error")
+    end
+
+
+class \nodoc\ iso _TestHtmlRenderSplitIfCollapsed is UnitTest
+  fun name(): String =>
+    "HtmlTemplate render_split: if block escapes collapsed output"
+
+  fun apply(h: TestHelper) =>
+    try
+      let t = HtmlTemplate.parse(
+        "<p>{{ if flag }}{{ msg }}{{ end }}</p>")?
+      let v = TemplateValues
+      v("flag") = "true"
+      v("msg") = "<script>alert('xss')</script>"
+      (let s, let d) = t.render_split(v)?
+      h.assert_eq[USize](2, s.size())
+      h.assert_eq[USize](1, d.size())
+      h.assert_eq[String]("<p>", s(0)?)
+      h.assert_eq[String]("</p>", s(1)?)
+      // Collapsed dynamic must be escaped
+      h.assert_true(d(0)?.contains("&lt;"))
+      h.assert_false(d(0)?.contains("<script>"))
+    else
+      h.fail("unexpected error")
+    end
+
+
+class \nodoc\ iso _TestRenderToEmpty is UnitTest
+  fun name(): String => "render_to: empty template"
+
+  fun apply(h: TestHelper) =>
+    try
+      let t = Template.parse("")?
+      let sink: _CountingSink ref = _CountingSink
+      t.render_to(sink, TemplateValues)?
+      h.assert_true(sink.alternation_ok, "alternation violated")
+      h.assert_eq[USize](1, sink.literal_count)
+      h.assert_eq[USize](0, sink.dynamic_count)
+    else
+      h.fail("unexpected error")
+    end
+
+
+class \nodoc\ iso _TestRenderToLiteralOnly is UnitTest
+  fun name(): String => "render_to: literal-only template"
+
+  fun apply(h: TestHelper) =>
+    try
+      let t = Template.parse("hello world")?
+      let sink: _ContentSink ref = _ContentSink
+      t.render_to(sink, TemplateValues)?
+      h.assert_eq[USize](1, sink.literals.size())
+      h.assert_eq[USize](0, sink.dynamics.size())
+      h.assert_eq[String]("hello world", sink.literals(0)?)
+    else
+      h.fail("unexpected error")
+    end
+
+
+class \nodoc\ iso _TestRenderToPipe is UnitTest
+  fun name(): String => "render_to: pipe produces filtered dynamic"
+
+  fun apply(h: TestHelper) =>
+    try
+      let t = Template.parse("pre{{ name | upper }}post")?
+      let v = TemplateValues
+      v("name") = "hello"
+      let sink: _ContentSink ref = _ContentSink
+      t.render_to(sink, v)?
+      h.assert_eq[USize](2, sink.literals.size())
+      h.assert_eq[USize](1, sink.dynamics.size())
+      h.assert_eq[String]("pre", sink.literals(0)?)
+      h.assert_eq[String]("post", sink.literals(1)?)
+      h.assert_eq[String]("HELLO", sink.dynamics(0)?)
+    else
+      h.fail("unexpected error")
+    end
+
+
+class \nodoc\ iso _TestRenderToMissingVar is UnitTest
+  fun name(): String => "render_to: missing variable renders empty dynamic"
+
+  fun apply(h: TestHelper) =>
+    try
+      let t = Template.parse("a{{ x }}b")?
+      let sink: _ContentSink ref = _ContentSink
+      t.render_to(sink, TemplateValues)?
+      h.assert_eq[USize](2, sink.literals.size())
+      h.assert_eq[USize](1, sink.dynamics.size())
+      h.assert_eq[String]("a", sink.literals(0)?)
+      h.assert_eq[String]("b", sink.literals(1)?)
+      h.assert_eq[String]("", sink.dynamics(0)?)
+    else
+      h.fail("unexpected error")
+    end
+
+
+class \nodoc\ iso _TestRenderToIfNotCollapsed is UnitTest
+  fun name(): String => "render_to: ifnot collapses into one dynamic"
+
+  fun apply(h: TestHelper) =>
+    try
+      let t = Template.parse("a{{ ifnot flag }}NO{{ end }}b")?
+      let sink: _CountingSink ref = _CountingSink
+      t.render_to(sink, TemplateValues)?
+      h.assert_true(sink.alternation_ok, "alternation violated")
+      h.assert_eq[USize](2, sink.literal_count)
+      h.assert_eq[USize](1, sink.dynamic_count)
+    else
+      h.fail("unexpected error")
+    end
+
+
+class \nodoc\ iso _TestRenderToAdjacentVars is UnitTest
+  fun name(): String => "render_to: adjacent variables"
+
+  fun apply(h: TestHelper) =>
+    try
+      let t = Template.parse("{{ x }}{{ y }}")?
+      let v = TemplateValues
+      v("x") = "X"
+      v("y") = "Y"
+      let sink: _CountingSink ref = _CountingSink
+      t.render_to(sink, v)?
+      h.assert_true(sink.alternation_ok, "alternation violated")
+      h.assert_eq[USize](3, sink.literal_count)
+      h.assert_eq[USize](2, sink.dynamic_count)
+    else
+      h.fail("unexpected error")
+    end
+
+
+class \nodoc\ iso _TestRenderToBlockTransparent is UnitTest
+  fun name(): String => "render_to: block is transparent (literals merge)"
+
+  fun apply(h: TestHelper) =>
+    try
+      let partials = recover val
+        let m = Map[String, String]
+        m("base") = "AA{{ block content }}default{{ end }}BB"
+        m
+      end
+      let ctx = TemplateContext(where partials' = partials)
+      let t = Template.parse("{{ extends \"base\" }}", ctx)?
+      let sink: _ContentSink ref = _ContentSink
+      t.render_to(sink, TemplateValues)?
+      h.assert_eq[USize](1, sink.literals.size())
+      h.assert_eq[USize](0, sink.dynamics.size())
+      h.assert_eq[String]("AAdefaultBB", sink.literals(0)?)
+    else
+      h.fail("unexpected error")
+    end
+
+
+class \nodoc\ iso _TestRenderToNestedControlFlow is UnitTest
+  fun name(): String =>
+    "render_to: nested control flow collapses into outer dynamic"
+
+  fun apply(h: TestHelper) =>
+    try
+      let t = Template.parse(
+        "S{{ if flag }}{{ if inner }}A{{ end }}{{ end }}E")?
+      let v = TemplateValues
+      v("flag") = "y"
+      v("inner") = "y"
+      let sink: _CountingSink ref = _CountingSink
+      t.render_to(sink, v)?
+      h.assert_true(sink.alternation_ok, "alternation violated")
+      h.assert_eq[USize](2, sink.literal_count)
+      h.assert_eq[USize](1, sink.dynamic_count)
+    else
+      h.fail("unexpected error")
     end
