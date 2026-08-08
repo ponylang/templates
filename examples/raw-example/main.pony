@@ -28,12 +28,13 @@ actor Main
       return
     end
 
-    // Raw block with trim markers — strips surrounding whitespace while
-    // still emitting the raw content literally
+    // Raw block with trim markers — strips surrounding whitespace
+    // while still emitting the raw content literally
     let trimmed =
       try
         Template.parse(
-          "before\n{{- raw -}}\n{{ delimiters }}\n{{- end -}}\nafter")?
+          "before\n{{- raw -}}\n{{ delimiters }}" +
+          "\n{{- end -}}\nafter")?
       else
         env.err.print("Could not parse template :(")
         env.exitcode(1)

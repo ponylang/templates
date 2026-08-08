@@ -7,6 +7,9 @@ primitive Upper is Filter
   ```
   """
   fun apply(input: String): String =>
+    """
+    Return the input converted to uppercase.
+    """
     let out = input.clone()
     out.upper_in_place()
     consume out
@@ -46,6 +49,10 @@ primitive Capitalize is Filter
   ```
   """
   fun apply(input: String): String =>
+    """
+    Return the input with the first character uppercased and the rest
+    lowercased.
+    """
     if input.size() == 0 then return "" end
     let out = recover iso String(input.size()) end
     var first = true
@@ -88,6 +95,9 @@ primitive Title is Filter
   ```
   """
   fun apply(input: String): String =>
+    """
+    Return the input converted to title case.
+    """
     if input.size() == 0 then return "" end
     let out = recover iso String(input.size()) end
     var word_start = true

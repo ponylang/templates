@@ -12,13 +12,13 @@ actor Main
   new create(env: Env) =>
     let values = TemplateValues
     values("name") = "world"
-    values("items") = TemplateValue(
-      recover val
-        let s = Array[TemplateValue]
-        s.push(TemplateValue("alpha"))
-        s.push(TemplateValue("beta"))
-        s
-      end)
+    values("items") =
+      TemplateValue(
+        recover val
+          let s = Array[TemplateValue]
+          s .> push(TemplateValue("alpha")) .> push(TemplateValue("beta"))
+          s
+        end)
 
     // Basic comment — the {{! ... }} block is invisible in the output
     let basic =
@@ -39,8 +39,9 @@ actor Main
       return
     end
 
-    // Comments with trim markers remove surrounding whitespace, just like
-    // any other block type. Useful inside loops to avoid extra blank lines.
+    // Comments with trim markers remove surrounding whitespace, just
+    // like any other block type. Useful inside loops to avoid extra
+    // blank lines.
     let trimmed =
       try
         Template.parse(

@@ -1,7 +1,8 @@
 class ref _StringSink is TemplateSink
   """
   A sink that concatenates all literal and dynamic segments into a single
-  string. Used internally by `Template.render()` and `HtmlTemplate.render()`.
+  string. Used internally by `Template.render()` and
+  `HTMLTemplate.render()`.
   """
   var _result: String iso = recover iso String end
 
@@ -14,14 +15,14 @@ class ref _StringSink is TemplateSink
   fun ref result(): String val =>
     _result = recover iso String end
 
-
 primitive _TemplateWalk
   """
-  Unified AST walker that drives a `TemplateSink` through a parsed template's
-  parts. Handles the interleaving invariant: calls to `literal` and
-  `dynamic_value` strictly alternate, starting and ending with `literal`.
-  For N dynamic values, exactly N+1 literal calls are made. Empty-string
-  literals are inserted where needed to maintain this invariant.
+  Unified AST walker that drives a `TemplateSink` through a parsed
+  template's parts. Handles the interleaving invariant: calls to `literal`
+  and `dynamic_value` strictly alternate, starting and ending with
+  `literal`. For N dynamic values, exactly N+1 literal calls are made.
+  Empty-string literals are inserted where needed to maintain this
+  invariant.
 
   Control flow subtrees (`_If`, `_IfNot`, `_Loop`) collapse into a single
   `dynamic_value` call. `_Block` is transparent — its literals merge with
@@ -33,7 +34,7 @@ primitive _TemplateWalk
     values: TemplateValues box,
     sink: TemplateSink ref,
     escaper: _Escaper ref
-  )? =>
+  ) ? =>
     """
     Walk the top-level parts array, maintaining the interleaving invariant
     on the given sink.
@@ -49,15 +50,15 @@ primitive _TemplateWalk
     sink: TemplateSink ref,
     escaper: _Escaper ref,
     pending: String ref
-  )? =>
+  ) ? =>
     """
     Shared body walker with a pending literal buffer. Literals accumulate
     in `pending`; before each dynamic value, the buffer is flushed as a
-    `literal` call, then the dynamic is emitted. `_Block` is transparent —
-    its body is walked inline without flushing.
+    `literal` call, then the dynamic is emitted. `_Block` is
+    transparent — its body is walked inline without flushing.
     """
     for part in parts.values() do
-      match part
+      match \exhaustive\ part
       | (_Literal, let text: String) =>
         escaper.advance_literal(text)
         pending.append(text)
@@ -65,15 +66,18 @@ primitive _TemplateWalk
         // Flush pending literal before dynamic
         sink.literal(pending.clone())
         pending.clear()
-        sink.dynamic_value(escaper.escape_pipe(_eval_pipe(pipe, values)))
+        sink.dynamic_value(
+          escaper.escape_pipe(_eval_pipe(pipe, values)))
       | let prop: _PropNode =>
         // Flush pending literal before dynamic
         sink.literal(pending.clone())
         pending.clear()
-        let tv = try values._lookup(prop)? else
-          sink.dynamic_value("")
-          continue
-        end
+        let tv =
+          try values._lookup(prop)?
+          else
+            sink.dynamic_value("")
+            continue
+          end
         let raw = try tv.string()? else "" end
         sink.dynamic_value(escaper.escape_prop(tv, raw))
       | let ctrl: (_If box | _IfNot box | _Loop box) =>
@@ -84,8 +88,10 @@ primitive _TemplateWalk
         _walk_inner(ctrl, values, inner, escaper)?
         sink.dynamic_value(inner.result())
       | let blk: _Block box =>
-        // Transparent — walk body inline, literals merge with surroundings
-        _walk_body(blk.body, values, sink, escaper, pending)?
+        // Transparent — walk body inline, literals merge with
+        // surroundings
+        _walk_body(
+          blk.body, values, sink, escaper, pending)?
       end
     end
 
@@ -94,13 +100,14 @@ primitive _TemplateWalk
     values: TemplateValues box,
     sink: _StringSink ref,
     escaper: _Escaper ref
-  )? =>
+  ) ? =>
     """
-    Walk a control flow subtree, collapsing its output into a single string
-    via the given `_StringSink`. No interleaving enforcement — the sink
-    receives raw literal/dynamic calls that concatenate into a single result.
+    Walk a control flow subtree, collapsing its output into a single
+    string via the given `_StringSink`. No interleaving enforcement —
+    the sink receives raw literal/dynamic calls that concatenate into a
+    single result.
     """
-    match part
+    match \exhaustive\ part
     | let if': _If box =>
       if
         try
@@ -129,12 +136,15 @@ primitive _TemplateWalk
           _walk_inner_body(eb, values, sink, escaper)?
         end
       else
-        _walk_inner_body(ifnot.body, values, sink, escaper)?
+        _walk_inner_body(
+          ifnot.body, values, sink, escaper)?
       end
     | let loop: _Loop box =>
       for value in values._lookup(loop.source)?.values() do
-        let body_values = values._override(loop.target, value)
-        _walk_inner_body(loop.body, body_values, sink, escaper)?
+        let body_values =
+          values._override(loop.target, value)
+        _walk_inner_body(
+          loop.body, body_values, sink, escaper)?
       end
     end
 
@@ -143,23 +153,26 @@ primitive _TemplateWalk
     values: TemplateValues box,
     sink: _StringSink ref,
     escaper: _Escaper ref
-  )? =>
+  ) ? =>
     """
     Walk parts inside a collapsed control flow subtree. All output goes
     directly to the string sink without interleaving enforcement.
     """
     for part in parts.values() do
-      match part
+      match \exhaustive\ part
       | (_Literal, let text: String) =>
         escaper.advance_literal(text)
         sink.literal(text)
       | let pipe: _Pipe box =>
-        sink.dynamic_value(escaper.escape_pipe(_eval_pipe(pipe, values)))
+        sink.dynamic_value(
+          escaper.escape_pipe(_eval_pipe(pipe, values)))
       | let prop: _PropNode =>
-        let tv = try values._lookup(prop)? else
-          sink.dynamic_value("")
-          continue
-        end
+        let tv =
+          try values._lookup(prop)?
+          else
+            sink.dynamic_value("")
+            continue
+          end
         let raw = try tv.string()? else "" end
         sink.dynamic_value(escaper.escape_prop(tv, raw))
       | let if': _If box =>
@@ -169,48 +182,65 @@ primitive _TemplateWalk
       | let loop: _Loop box =>
         _walk_inner(loop, values, sink, escaper)?
       | let blk: _Block box =>
-        _walk_inner_body(blk.body, values, sink, escaper)?
+        _walk_inner_body(
+          blk.body, values, sink, escaper)?
       end
     end
 
-  fun _eval_pipe(pipe: _Pipe box, values: TemplateValues box): String =>
+  fun _eval_pipe(
+    pipe: _Pipe box,
+    values: TemplateValues box
+  ): String =>
     """
-    Evaluate a pipe expression: resolve the source, then apply each filter
-    in order with its resolved arguments.
+    Evaluate a pipe expression: resolve the source, then apply each
+    filter in order with its resolved arguments.
     """
-    var current: String = match pipe.source
-    | let s: String => s
-    | let p: _PropNode =>
-      try values._lookup(p)?.string()? else "" end
-    end
+    var current: String =
+      match \exhaustive\ pipe.source
+      | let s: String => s
+      | let p: _PropNode =>
+        try values._lookup(p)?.string()? else "" end
+      end
     for (filter, args) in pipe.filters.values() do
-      match filter
+      match \exhaustive\ filter
       | let f: Filter val =>
         current = f(current)
       | let f: Filter2 val =>
-        let a1 = try
-          match args(0)?
-          | let s: String => s
-          | let p: _PropNode =>
-            try values._lookup(p)?.string()? else "" end
+        let a1 =
+          try
+            match \exhaustive\ args(0)?
+            | let s: String => s
+            | let p: _PropNode =>
+              try values._lookup(p)?.string()?
+              else ""
+              end
+            end
+          else ""
           end
-        else "" end
         current = f(current, a1)
       | let f: Filter3 val =>
-        let a1 = try
-          match args(0)?
-          | let s: String => s
-          | let p: _PropNode =>
-            try values._lookup(p)?.string()? else "" end
+        let a1 =
+          try
+            match \exhaustive\ args(0)?
+            | let s: String => s
+            | let p: _PropNode =>
+              try values._lookup(p)?.string()?
+              else ""
+              end
+            end
+          else ""
           end
-        else "" end
-        let a2 = try
-          match args(1)?
-          | let s: String => s
-          | let p: _PropNode =>
-            try values._lookup(p)?.string()? else "" end
+        let a2 =
+          try
+            match \exhaustive\ args(1)?
+            | let s: String => s
+            | let p: _PropNode =>
+              try values._lookup(p)?.string()?
+              else ""
+              end
+            end
+          else ""
           end
-        else "" end
         current = f(current, a1, a2)
       end
     end

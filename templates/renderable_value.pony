@@ -1,14 +1,14 @@
-primitive _HtmlEscape
-  fun for_context(context: HtmlContext, raw: String): String =>
+primitive _HTMLEscape
+  fun for_context(context: HTMLContext, raw: String): String =>
     """
     Apply context-appropriate escaping to the raw string.
     """
-    match context
+    match \exhaustive\ context
     | CtxText => html_text(raw)
-    | CtxHtmlAttr => html_attr(raw)
-    | CtxUrlAttr => url_attr(raw)
+    | CtxHTMLAttr => html_attr(raw)
+    | CtxURLAttr => url_attr(raw)
     | CtxJsAttr => js_string(raw)
-    | CtxCssAttr => css_value(raw)
+    | CtxCSSAttr => css_value(raw)
     | CtxScript => js_string(raw)
     | CtxStyle => css_value(raw)
     | CtxComment => comment(raw)
@@ -59,8 +59,9 @@ primitive _HtmlEscape
       return "#ZgotmplZ"
     end
 
-    // Percent-encode characters that are unsafe in URL attribute context,
-    // then HTML-entity-encode the result for embedding in an attribute.
+    // Percent-encode characters that are unsafe in URL attribute
+    // context, then HTML-entity-encode the result for embedding in an
+    // attribute.
     let url_encoded = _percent_encode(raw)
     html_attr(url_encoded)
 
@@ -201,29 +202,29 @@ primitive _HtmlEscape
     else ('a' - 10) + n
     end
 
-
 interface val RenderableValue
   """
   Determines how a template value is rendered within an HTML context.
   The renderer passes the current HTML context and the raw string value;
   the implementation decides whether and how to escape.
   """
-  fun val render(context: HtmlContext, raw: String): String
+  fun val render(context: HTMLContext, raw: String): String
+    """
+    Render the raw string value with the given HTML context.
+    """
 
-
-primitive _HtmlEscapingRenderer is RenderableValue
+primitive _HTMLEscapingRenderer is RenderableValue
   """
   Applies context-appropriate HTML escaping. This is the default renderer
-  for template values used with `HtmlTemplate`.
+  for template values used with `HTMLTemplate`.
   """
-  fun val render(context: HtmlContext, raw: String): String =>
-    _HtmlEscape.for_context(context, raw)
-
+  fun val render(context: HTMLContext, raw: String): String =>
+    _HTMLEscape.for_context(context, raw)
 
 primitive _NoEscapeRenderer is RenderableValue
   """
   Returns content unchanged, bypassing auto-escaping. Used for values
   explicitly marked as unescaped via `TemplateValue.unescaped`.
   """
-  fun val render(context: HtmlContext, raw: String): String =>
+  fun val render(context: HTMLContext, raw: String): String =>
     raw
