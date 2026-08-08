@@ -1,39 +1,58 @@
 primitive CtxText
-  """Normal text content between HTML tags."""
+  """
+  Normal text content between HTML tags.
+  """
 
-primitive CtxHtmlAttr
-  """Inside a quoted HTML attribute value (non-URL, non-event, non-style)."""
+primitive CtxHTMLAttr
+  """
+  Inside a quoted HTML attribute value (non-URL, non-event, non-style).
+  """
 
-primitive CtxUrlAttr
-  """Inside a quoted URL attribute value (`href`, `src`, `action`, etc.)."""
+primitive CtxURLAttr
+  """
+  Inside a quoted URL attribute value (`href`, `src`, `action`, etc.).
+  """
 
 primitive CtxJsAttr
-  """Inside a quoted JavaScript event-handler attribute (`onclick`, etc.)."""
+  """
+  Inside a quoted JavaScript event-handler attribute (`onclick`, etc.).
+  """
 
-primitive CtxCssAttr
-  """Inside a quoted `style` attribute value."""
+primitive CtxCSSAttr
+  """
+  Inside a quoted `style` attribute value.
+  """
 
 primitive CtxScript
-  """Inside a `<script>` element body."""
+  """
+  Inside a `<script>` element body.
+  """
 
 primitive CtxStyle
-  """Inside a `<style>` element body."""
+  """
+  Inside a `<style>` element body.
+  """
 
 primitive CtxComment
-  """Inside an HTML comment (`<!-- ... -->`)."""
+  """
+  Inside an HTML comment (`<!-- ... -->`).
+  """
 
 primitive CtxRcdata
-  """Inside a raw-text element (`<title>`, `<textarea>`)."""
+  """
+  Inside a raw-text element (`<title>`, `<textarea>`).
+  """
 
 primitive CtxError
-  """Invalid insertion point (tag name, unquoted attribute, etc.)."""
+  """
+  Invalid insertion point (tag name, unquoted attribute, etc.).
+  """
 
 // The HTML context at a variable insertion point, used by `RenderableValue`
 // implementations to select the appropriate escaping strategy.
-type HtmlContext is
-  ( CtxText | CtxHtmlAttr | CtxUrlAttr | CtxJsAttr | CtxCssAttr
+type HTMLContext is
+  ( CtxText | CtxHTMLAttr | CtxURLAttr | CtxJsAttr | CtxCSSAttr
   | CtxScript | CtxStyle | CtxComment | CtxRcdata | CtxError )
-
 
 primitive _StateText
 primitive _StateTag
@@ -49,20 +68,19 @@ primitive _StateRcdataTextarea
 primitive _StateScript
 primitive _StateStyle
 
-type _HtmlState is
+type _HTMLState is
   ( _StateText | _StateTag | _StateAttrName | _StateAfterAttrName
   | _StateBeforeAttrVal | _StateDqAttrVal | _StateSqAttrVal
   | _StateUnqAttrVal | _StateComment | _StateRcdataTitle
   | _StateRcdataTextarea | _StateScript | _StateStyle )
 
-
-class _HtmlContextTracker
+class _HTMLContextTracker
   """
   Character-by-character HTML state machine that tracks position within HTML
   structure. Used at both parse time (to validate insertion points) and render
   time (to determine context-appropriate escaping).
   """
-  var _state: _HtmlState = _StateText
+  var _state: _HTMLState = _StateText
   var _tag_name: String ref = String
   var _attr_name: String ref = String
   var _tag_name_done: Bool = false
@@ -83,7 +101,7 @@ class _HtmlContextTracker
     end
 
   fun ref _feed_byte(c: U8) =>
-    match _state
+    match \exhaustive\ _state
     | _StateText => _in_text(c)
     | _StateTag => _in_tag(c)
     | _StateAttrName => _in_attr_name(c)
@@ -253,13 +271,14 @@ class _HtmlContextTracker
     // before >. Per the HTML spec, </script > is a valid closing tag.
     let lower = text.clone()
     lower.lower_in_place()
-    let prefix = recover val
-      let s = String(tag_name.size() + 2)
-      s.append("</")
-      s.append(tag_name)
-      s
-    end
-    // Scan for the prefix, then check that only whitespace follows before >
+    let prefix =
+      recover val
+        let s = String(tag_name.size() + 2)
+        s .> append("</") .> append(tag_name)
+        s
+      end
+    // Scan for the prefix, then check that only whitespace follows
+    // before >
     var pos: USize = 0
     try
       while pos < lower.size() do
@@ -279,11 +298,11 @@ class _HtmlContextTracker
     end
     false
 
-  fun context(): HtmlContext =>
+  fun context(): HTMLContext =>
     """
     Return the current escaping context based on state and attribute name.
     """
-    match _state
+    match \exhaustive\ _state
     | _StateText => CtxText
     | _StateDqAttrVal => _attr_context()
     | _StateSqAttrVal => _attr_context()
@@ -299,16 +318,17 @@ class _HtmlContextTracker
     | _StateBeforeAttrVal => CtxError
     end
 
-  fun _attr_context(): HtmlContext =>
-    if _is_url_attr() then CtxUrlAttr
+  fun _attr_context(): HTMLContext =>
+    if _is_url_attr() then CtxURLAttr
     elseif _is_js_attr() then CtxJsAttr
-    elseif _is_css_attr() then CtxCssAttr
-    else CtxHtmlAttr
+    elseif _is_css_attr() then CtxCSSAttr
+    else CtxHTMLAttr
     end
 
   fun _is_url_attr(): Bool =>
     // _attr_name is already lowered during construction
-    (_attr_name == "href") or (_attr_name == "src") or (_attr_name == "action")
+    (_attr_name == "href") or (_attr_name == "src")
+      or (_attr_name == "action")
       or (_attr_name == "formaction") or (_attr_name == "cite")
       or (_attr_name == "data") or (_attr_name == "poster")
 
@@ -325,17 +345,17 @@ class _HtmlContextTracker
     // _attr_name is already lowered during construction
     _attr_name == "style"
 
-  fun state(): _HtmlState => _state
+  fun state(): _HTMLState => _state
 
-  fun clone(): _HtmlContextTracker ref^ =>
-    let c = _HtmlContextTracker
+  fun clone(): _HTMLContextTracker ref^ =>
+    let c = _HTMLContextTracker
     c._state = _state
     c._tag_name = _tag_name.clone()
     c._attr_name = _attr_name.clone()
     c._tag_name_done = _tag_name_done
     c
 
-  fun eq(other: _HtmlContextTracker box): Bool =>
+  fun eq(other: _HTMLContextTracker box): Bool =>
     (_state is other._state)
       and (_tag_name == other._tag_name)
       and (_attr_name == other._attr_name)

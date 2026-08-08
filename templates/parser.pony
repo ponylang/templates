@@ -88,7 +88,6 @@ type _StmtNode is
   | _PropNode | _PipeNode | _IfNode | _IfNotNode
   | _LoopNode | _IncludeNode | _ExtendsNode | _BlockNode )
 
-
 class _Cursor
   """
   A simple cursor over a `String val` with position tracking for recursive
@@ -109,10 +108,10 @@ class _Cursor
   fun has_remaining(): Bool =>
     _pos < _data.size()
 
-  fun peek(): U8? =>
+  fun peek(): U8 ? =>
     _data(_pos)?
 
-  fun ref next(): U8? =>
+  fun ref next(): U8 ? =>
     let c = _data(_pos)?
     _pos = _pos + 1
     c
@@ -157,9 +156,8 @@ class _Cursor
   fun substring(from: USize, to: USize): String =>
     _data.substring(from.isize(), to.isize())
 
-
 primitive _StmtParser
-  fun parse(source: String): _StmtNode? =>
+  fun parse(source: String): _StmtNode ? =>
     let stripped = source.clone()
     stripped.strip()
     let cursor = _Cursor(consume stripped)
@@ -168,7 +166,7 @@ primitive _StmtParser
     if cursor.has_remaining() then error end
     result
 
-  fun _parse_stmt(cursor: _Cursor): _StmtNode? =>
+  fun _parse_stmt(cursor: _Cursor): _StmtNode ? =>
     cursor.skip_whitespace()
 
     // Try keywords in PEG priority order.
@@ -238,7 +236,7 @@ primitive _StmtParser
     // Fall through to expression
     _parse_expr(cursor)?
 
-  fun _parse_expr(cursor: _Cursor): _StmtNode? =>
+  fun _parse_expr(cursor: _Cursor): _StmtNode ? =>
     """
     Parse an expression: a pipe source (string literal or prop) optionally
     followed by a pipe tail.
@@ -263,7 +261,7 @@ primitive _StmtParser
       end
       _PipeNode(source, consume filters)
     else
-      match source
+      match \exhaustive\ source
       | let p: _PropNode => p
       | let s: String =>
         // A bare string literal with no pipe is not a valid statement
@@ -274,7 +272,7 @@ primitive _StmtParser
   fun _parse_filter_call(
     cursor: _Cursor,
     filters: Array[_FilterStep]
-  )? =>
+  ) ? =>
     """
     Parse a single filter call: `name` or `name(arg1, arg2, ...)`.
     """
@@ -300,7 +298,7 @@ primitive _StmtParser
     end
     filters.push(_FilterStep(consume name, consume args))
 
-  fun _parse_filter_arg(cursor: _Cursor): _FilterArgValue? =>
+  fun _parse_filter_arg(cursor: _Cursor): _FilterArgValue ? =>
     """
     Parse a filter argument: either a string literal or a prop reference.
     """
@@ -311,7 +309,7 @@ primitive _StmtParser
       _parse_prop(cursor)?
     end
 
-  fun _parse_prop(cursor: _Cursor): _PropNode? =>
+  fun _parse_prop(cursor: _Cursor): _PropNode ? =>
     """
     Parse a property reference: `name` or `name.name.name`.
     """
@@ -322,7 +320,7 @@ primitive _StmtParser
     end
     _PropNode(consume name, props)
 
-  fun _parse_name(cursor: _Cursor): String? =>
+  fun _parse_name(cursor: _Cursor): String ? =>
     """
     Parse an identifier: `[a-zA-Z_][a-zA-Z0-9_]*`.
     """
@@ -341,7 +339,7 @@ primitive _StmtParser
     end
     cursor.substring(start, cursor.pos())
 
-  fun _parse_string_literal(cursor: _Cursor): String? =>
+  fun _parse_string_literal(cursor: _Cursor): String ? =>
     """
     Parse a double-quoted string literal: `"..."` with printable ASCII
     except double quote. Returns the content without quotes.
@@ -351,9 +349,13 @@ primitive _StmtParser
     try
       while true do
         let c = cursor.peek()?
-        if c == '"' then break end
+        if c == '"' then
+          break
+        end
         // Printable ASCII except double quote: ' ' to '!' and '#' to '~'
-        if ((c >= 0x20) and (c <= 0x21)) or ((c >= 0x23) and (c <= 0x7E)) then
+        if ((c >= 0x20) and (c <= 0x21))
+          or ((c >= 0x23) and (c <= 0x7E))
+        then
           cursor.advance()
         else error
         end
@@ -363,7 +365,7 @@ primitive _StmtParser
     if not cursor.try_consume_char('"') then error end
     content
 
-  fun _parse_quoted_name(cursor: _Cursor): String? =>
+  fun _parse_quoted_name(cursor: _Cursor): String ? =>
     """
     Parse a quoted name for include/extends: `"[a-zA-Z0-9_-]+"`.
     Returns the content without quotes.
@@ -374,7 +376,9 @@ primitive _StmtParser
     try
       while true do
         let c = cursor.peek()?
-        if _is_alpha(c) or _is_digit(c) or (c == '_') or (c == '-') then
+        if _is_alpha(c) or _is_digit(c)
+          or (c == '_') or (c == '-')
+        then
           cursor.advance()
           count = count + 1
         else break
@@ -386,19 +390,19 @@ primitive _StmtParser
     if not cursor.try_consume_char('"') then error end
     content
 
-  fun _parse_if_kw(cursor: _Cursor): _IfNode? =>
+  fun _parse_if_kw(cursor: _Cursor): _IfNode ? =>
     cursor.skip_whitespace()
     _IfNode(_parse_prop(cursor)?)
 
-  fun _parse_ifnot_kw(cursor: _Cursor): _IfNotNode? =>
+  fun _parse_ifnot_kw(cursor: _Cursor): _IfNotNode ? =>
     cursor.skip_whitespace()
     _IfNotNode(_parse_prop(cursor)?)
 
-  fun _parse_elseif_kw(cursor: _Cursor): _ElseIfNode? =>
+  fun _parse_elseif_kw(cursor: _Cursor): _ElseIfNode ? =>
     cursor.skip_whitespace()
     _ElseIfNode(_parse_prop(cursor)?)
 
-  fun _parse_loop_kw(cursor: _Cursor): _LoopNode? =>
+  fun _parse_loop_kw(cursor: _Cursor): _LoopNode ? =>
     cursor.skip_whitespace()
     let target = _parse_name(cursor)?
     cursor.skip_whitespace()
@@ -407,15 +411,15 @@ primitive _StmtParser
     let source = _parse_prop(cursor)?
     _LoopNode(consume target, source)
 
-  fun _parse_include_kw(cursor: _Cursor): _IncludeNode? =>
+  fun _parse_include_kw(cursor: _Cursor): _IncludeNode ? =>
     cursor.skip_whitespace()
     _IncludeNode(_parse_quoted_name(cursor)?)
 
-  fun _parse_extends_kw(cursor: _Cursor): _ExtendsNode? =>
+  fun _parse_extends_kw(cursor: _Cursor): _ExtendsNode ? =>
     cursor.skip_whitespace()
     _ExtendsNode(_parse_quoted_name(cursor)?)
 
-  fun _parse_block_kw(cursor: _Cursor): _BlockNode? =>
+  fun _parse_block_kw(cursor: _Cursor): _BlockNode ? =>
     cursor.skip_whitespace()
     _BlockNode(_parse_name(cursor)?)
 

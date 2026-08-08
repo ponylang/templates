@@ -2,12 +2,11 @@ use "collections"
 use "files"
 use "valbytes"
 
-
-class val HtmlTemplate
+class val HTMLTemplate
   """
   An HTML-aware template engine with contextual auto-escaping.
 
-  `HtmlTemplate` uses the same template syntax as `Template` but automatically
+  `HTMLTemplate` uses the same template syntax as `Template` but automatically
   escapes variable output based on HTML context. A variable inside a `<p>` tag
   gets HTML entity escaping; inside an `href` attribute it gets URL escaping
   and dangerous scheme filtering; inside an `onclick` attribute it gets
@@ -20,14 +19,14 @@ class val HtmlTemplate
 
   To bypass auto-escaping for trusted content, use `TemplateValue.unescaped`
   or `TemplateValues.unescaped`. Plain `Template` ignores the escaping
-  annotations entirely — they only take effect in `HtmlTemplate`.
+  annotations entirely — they only take effect in `HTMLTemplate`.
   """
   let _parts: Array[_Part] box
 
   new val parse(
     source: String,
     ctx: TemplateContext val = TemplateContext()
-  )? =>
+  ) ? =>
     """
     Parse an HTML template from a string. Raises an error if the template
     has syntax errors or if variables appear in invalid HTML positions
@@ -40,7 +39,7 @@ class val HtmlTemplate
   new val from_file(
     path: FilePath,
     ctx: TemplateContext val = TemplateContext()
-  )? =>
+  ) ? =>
     """
     Parse an HTML template from a file. Raises an error if the file cannot
     be read, the template has syntax errors, or variables appear in invalid
@@ -59,52 +58,53 @@ class val HtmlTemplate
     else error
     end
 
-  fun render(values: TemplateValues box): String? =>
+  fun render(values: TemplateValues box): String ? =>
     """
     Render the template with the given values. Variable output is
     automatically escaped based on HTML context unless the value was
     created with `TemplateValue.unescaped`.
     """
     let sink: _StringSink ref = _StringSink
-    let escaper: _HtmlEscaper ref = _HtmlEscaper(_HtmlContextTracker)
+    let escaper: _HTMLEscaper ref = _HTMLEscaper(_HTMLContextTracker)
     _TemplateWalk.walk(_parts, values, sink, escaper)?
     sink.result()
 
-  fun render_to(sink: TemplateSink ref, values: TemplateValues box)? =>
+  fun render_to(sink: TemplateSink ref, values: TemplateValues box) ? =>
     """
-    Walk the template and drive the given sink with alternating `literal` and
-    `dynamic_value` calls. Dynamic values are already escaped based on HTML
-    context — the sink receives final, safe strings. See `TemplateSink` for
-    the interleaving guarantee.
+    Walk the template and drive the given sink with alternating `literal`
+    and `dynamic_value` calls. Dynamic values are already escaped based on
+    HTML context — the sink receives final, safe strings. See
+    `TemplateSink` for the interleaving guarantee.
     """
-    let escaper: _HtmlEscaper ref = _HtmlEscaper(_HtmlContextTracker)
+    let escaper: _HTMLEscaper ref = _HTMLEscaper(_HTMLContextTracker)
     _TemplateWalk.walk(_parts, values, sink, escaper)?
 
   fun render_split(
     values: TemplateValues box
-  ): (Array[String] val, Array[String] val)? =>
+  ): (Array[String] val, Array[String] val) ? =>
     """
     Render the template and return the static literal segments and dynamic
     value segments as separate arrays. Dynamic values are already escaped
     based on HTML context. For N dynamic insertions, the statics array has
     N+1 entries. Concatenating `statics(0) + dynamics(0) + statics(1) +
-    dynamics(1) + ... + statics(N)` produces the same result as `render()`.
+    dynamics(1) + ... + statics(N)` produces the same result as
+    `render()`.
     """
     let sink: _SplitSink ref = _SplitSink
-    let escaper: _HtmlEscaper ref = _HtmlEscaper(_HtmlContextTracker)
+    let escaper: _HTMLEscaper ref = _HTMLEscaper(_HTMLContextTracker)
     _TemplateWalk.walk(_parts, values, sink, escaper)?
     sink.result()
 
-  fun tag _validate(parts: Array[_Part] box)? =>
-    let tracker: _HtmlContextTracker ref = _HtmlContextTracker
+  fun tag _validate(parts: Array[_Part] box) ? =>
+    let tracker: _HTMLContextTracker ref = _HTMLContextTracker
     _validate_parts(parts, tracker)?
 
   fun tag _validate_parts(
     parts: Array[_Part] box,
-    tracker: _HtmlContextTracker ref
-  )? =>
+    tracker: _HTMLContextTracker ref
+  ) ? =>
     for part in parts.values() do
-      match part
+      match \exhaustive\ part
       | (_Literal, let text: String) =>
         tracker.feed(text)
         tracker.feed_close_tag(text)
@@ -144,8 +144,9 @@ class val HtmlTemplate
       end
     end
 
-  fun tag _check_insertion_point(tracker: _HtmlContextTracker box)? =>
+  fun tag _check_insertion_point(
+    tracker: _HTMLContextTracker box
+  ) ? =>
     match tracker.context()
     | CtxError => error
     end
-

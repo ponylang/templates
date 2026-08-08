@@ -5,6 +5,9 @@ interface val Filter
   Template syntax: `{{ value | myfilter }}`
   """
   fun apply(input: String): String
+    """
+    Apply the filter to the input value and return the result.
+    """
 
 interface val Filter2
   """
@@ -14,6 +17,9 @@ interface val Filter2
   `{{ value | myfilter(var) }}` where `var` is a template variable.
   """
   fun apply(input: String, arg1: String): String
+    """
+    Apply the filter to the input value with one extra argument.
+    """
 
 interface val Filter3
   """
@@ -23,6 +29,9 @@ interface val Filter3
   template variables as arguments.
   """
   fun apply(input: String, arg1: String, arg2: String): String
+    """
+    Apply the filter to the input value with two extra arguments.
+    """
 
 // Type alias for any filter arity.
 // A filter registered in `TemplateContext` can be any of the three arities.

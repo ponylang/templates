@@ -3,7 +3,6 @@ use "files"
 use "pony_check"
 use "pony_test"
 
-
 actor \nodoc\ Main is TestList
   new create(env: Env) => PonyTest(env, this)
 
@@ -224,9 +223,9 @@ actor \nodoc\ Main is TestList
     test(_TestContextScript)
     test(_TestContextStyle)
     test(_TestContextRcdata)
-    test(_TestContextUrlAttr)
+    test(_TestContextURLAttr)
     test(_TestContextJsAttr)
-    test(_TestContextCssAttr)
+    test(_TestContextCSSAttr)
     test(_TestContextClone)
     test(_TestContextBranchConsistency)
     test(_TestContextCaseInsensitiveTags)
@@ -237,42 +236,42 @@ actor \nodoc\ Main is TestList
     test(Property1UnitTest[String](_PropContextTextRoundtrip))
 
     // HTML escape function tests
-    test(_TestEscapeHtmlText)
-    test(_TestEscapeHtmlAttr)
-    test(_TestEscapeUrl)
-    test(_TestEscapeUrlPercentEncoding)
-    test(_TestEscapeUrlNoFalsePositive)
+    test(_TestEscapeHTMLText)
+    test(_TestEscapeHTMLAttr)
+    test(_TestEscapeURL)
+    test(_TestEscapeURLPercentEncoding)
+    test(_TestEscapeURLNoFalsePositive)
     test(_TestEscapeJs)
     test(_TestEscapeJsControlChars)
-    test(_TestEscapeCss)
-    test(_TestEscapeCssFormat)
+    test(_TestEscapeCSS)
+    test(_TestEscapeCSSFormat)
     test(_TestEscapeComment)
     test(_TestEscapeRcdata)
     test(_TestEscapeErrorContext)
-    test(Property1UnitTest[String](_PropEscapeHtmlNoUnescapedChars))
+    test(Property1UnitTest[String](_PropEscapeHTMLNoUnescapedChars))
     test(Property1UnitTest[String](_PropEscapeRcdataNoUnescapedChars))
 
     // RenderableValue tests
-    test(_TestHtmlEscapingRenderer)
+    test(_TestHTMLEscapingRenderer)
     test(_TestNoEscapeRenderer)
 
-    // HtmlTemplate tests
-    test(_TestHtmlTemplateBasicEscaping)
-    test(_TestHtmlTemplateAttrEscaping)
-    test(_TestHtmlTemplateUrlEscaping)
-    test(_TestHtmlTemplateUnescaped)
-    test(_TestHtmlTemplateUnescapedConvenience)
-    test(_TestHtmlTemplatePipeEscaping)
-    test(_TestHtmlTemplateIfBranchConsistency)
-    test(_TestHtmlTemplateLoopPreservesContext)
-    test(_TestHtmlTemplateErrorInTagName)
-    test(_TestHtmlTemplateErrorUnquotedAttr)
-    test(_TestHtmlTemplateScriptContext)
-    test(_TestHtmlTemplateScriptBacktick)
-    test(_TestHtmlTemplateCommentContext)
-    test(_TestHtmlTemplateCssAttrContext)
-    test(_TestHtmlTemplateRcdataContext)
-    test(Property1UnitTest[String](_PropHtmlTemplateEscapesInText))
+    // HTMLTemplate tests
+    test(_TestHTMLTemplateBasicEscaping)
+    test(_TestHTMLTemplateAttrEscaping)
+    test(_TestHTMLTemplateURLEscaping)
+    test(_TestHTMLTemplateUnescaped)
+    test(_TestHTMLTemplateUnescapedConvenience)
+    test(_TestHTMLTemplatePipeEscaping)
+    test(_TestHTMLTemplateIfBranchConsistency)
+    test(_TestHTMLTemplateLoopPreservesContext)
+    test(_TestHTMLTemplateErrorInTagName)
+    test(_TestHTMLTemplateErrorUnquotedAttr)
+    test(_TestHTMLTemplateScriptContext)
+    test(_TestHTMLTemplateScriptBacktick)
+    test(_TestHTMLTemplateCommentContext)
+    test(_TestHTMLTemplateCSSAttrContext)
+    test(_TestHTMLTemplateRcdataContext)
+    test(Property1UnitTest[String](_PropHTMLTemplateEscapesInText))
 
     // render_split tests
     test(_TestRenderSplitEmpty)
@@ -293,7 +292,7 @@ actor \nodoc\ Main is TestList
     test(Property1UnitTest[(String, String, String)](
       _PropRenderSplitInterleaving))
     test(Property1UnitTest[(String, String, String)](
-      _PropHtmlRenderSplitRoundtrip))
+      _PropHTMLRenderSplitRoundtrip))
 
     // render_to tests
     test(_TestRenderToAlternation)
@@ -310,15 +309,10 @@ actor \nodoc\ Main is TestList
     test(_TestRenderToNestedControlFlow)
 
     // HTML render_split / render_to tests
-    test(_TestHtmlRenderSplitEscaped)
-    test(_TestHtmlRenderToEscaped)
-    test(_TestHtmlRenderSplitUnescaped)
-    test(_TestHtmlRenderSplitIfCollapsed)
-
-
-// ---------------------------------------------------------------------------
-// Generators (Step 2)
-// ---------------------------------------------------------------------------
+    test(_TestHTMLRenderSplitEscaped)
+    test(_TestHTMLRenderToEscaped)
+    test(_TestHTMLRenderSplitUnescaped)
+    test(_TestHTMLRenderSplitIfCollapsed)
 
 primitive \nodoc\ _Generators
   fun _alpha_chars(): String =>
@@ -392,7 +386,9 @@ primitive \nodoc\ _Generators
     Generates `name(.name){0,2}` — a dotted property path.
     """
     Generators.map3[String, String, String, String](
-      valid_name(), valid_name(), valid_name(),
+      valid_name(),
+      valid_name(),
+      valid_name(),
       {(a, b, c) =>
         let depth = a.size() % 3  // Use first name's length to vary depth
         if depth == 0 then
@@ -411,7 +407,8 @@ primitive \nodoc\ _Generators
     arities.
     """
     Generators.map2[String, String, String](
-      valid_prop_stmt(), filter_arg_string(),
+      valid_prop_stmt(),
+      filter_arg_string(),
       {(prop, arg) =>
         let depth = prop.size() % 3
         if depth == 0 then
@@ -428,7 +425,8 @@ primitive \nodoc\ _Generators
     Generates `for name in prop` — a loop statement.
     """
     Generators.map2[String, String, String](
-      valid_name(), valid_prop_stmt(),
+      valid_name(),
+      valid_prop_stmt(),
       {(name, prop) => "for " + name + " in " + prop })
 
   fun valid_if_stmt(): Generator[String] =>
@@ -576,8 +574,8 @@ primitive \nodoc\ _Generators
     """
     Generates invalid statement strings, one per distinct failure mode.
     """
-    Generators.one_of[String]([
-      ""           // empty
+    Generators.one_of[String](
+      [ ""           // empty
       "3abc"       // starts with digit
       "foo@bar"    // invalid character
       "for x"      // incomplete loop (no "in")
@@ -611,15 +609,10 @@ primitive \nodoc\ _Generators
     """
     Generators.ascii_printable(0, 50)
 
-
-// ---------------------------------------------------------------------------
-// Existing tests
-// ---------------------------------------------------------------------------
-
 class \nodoc\ iso _TemplateTest is UnitTest
   fun name(): String => "Template basic functionality"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     let empty = Template.parse("")?
     h.assert_eq[String]("", empty.render(TemplateValues)?)
 
@@ -643,17 +636,18 @@ class \nodoc\ iso _TemplateTest is UnitTest
     let nested_template = Template.parse("{{ nested.inner }}")?
     h.assert_eq[String]("inner value", nested_template.render(values)?)
 
-
 class \nodoc\ iso _LoopTest is UnitTest
   fun name(): String => "Template loops"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     let values = TemplateValues
     let props = Map[String, TemplateValue]
-    props("inner") = TemplateValue(
-      [TemplateValue("rab"); TemplateValue("oof")])
-    values("xs") = TemplateValue(
-      [TemplateValue("foo"); TemplateValue("bar")], props)
+    props("inner") =
+      TemplateValue(
+        [TemplateValue("rab"); TemplateValue("oof")])
+    values("xs") =
+      TemplateValue(
+        [TemplateValue("foo"); TemplateValue("bar")], props)
 
     let var_not_used = Template.parse("{{ for x in xs }}{{ end }}")?
     h.assert_eq[String]("", var_not_used.render(values)?)
@@ -665,11 +659,10 @@ class \nodoc\ iso _LoopTest is UnitTest
       Template.parse("{{ for x in xs.inner }}{{ x }}{{ end }}")?
     h.assert_eq[String]("raboof", nested_template.render(values)?)
 
-
 class \nodoc\ iso _IfTest is UnitTest
   fun name(): String => "Template if"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     let values = TemplateValues
     let template = Template.parse("{{ if spam }}Eggs{{ end }}")?
     h.assert_eq[String]("", template.render(values)?)
@@ -677,37 +670,30 @@ class \nodoc\ iso _IfTest is UnitTest
     values("spam") = "value"
     h.assert_eq[String]("Eggs", template.render(values)?)
 
-
 class \nodoc\ iso _StmtParserTest is UnitTest
   fun name(): String => "Template statement parser"
 
   fun apply(h: TestHelper) =>
-    h.assert_no_error({()? => _StmtParser.parse("end")? as _EndNode })
+    h.assert_no_error({() ? => _StmtParser.parse("end")? as _EndNode })
     h.assert_no_error(
-      {()? => _StmtParser.parse("foo | upper")? as _PipeNode })
+      {() ? => _StmtParser.parse("foo | upper")? as _PipeNode })
     h.assert_no_error(
-      {()? => _StmtParser.parse("ifnot spam")? as _IfNotNode })
-
-
-// ---------------------------------------------------------------------------
-// TemplateValues tests (Step 3)
-// ---------------------------------------------------------------------------
+      {() ? => _StmtParser.parse("ifnot spam")? as _IfNotNode })
 
 class \nodoc\ iso _TestTemplateValuesStore is UnitTest
   fun name(): String => "TemplateValues: store and retrieve"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     let values = TemplateValues
     values("key") = "hello"
     h.assert_eq[String]("hello", values("key")?.string()?)
 
     h.assert_error({() ? => TemplateValues("nonexistent")? })
 
-
 class \nodoc\ iso _TestTemplateValuesParentChain is UnitTest
   fun name(): String => "TemplateValues: parent chain scoping"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     let parent = TemplateValues
     parent("shared") = "from_parent"
     parent("shadowed") = "parent_value"
@@ -724,11 +710,10 @@ class \nodoc\ iso _TestTemplateValuesParentChain is UnitTest
       c("missing")?
     })
 
-
 class \nodoc\ iso _TestTemplateValuesLookup is UnitTest
   fun name(): String => "TemplateValues: _lookup with dotted paths"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     let values = TemplateValues
     let inner_props = Map[String, TemplateValue]
     inner_props("inner") = TemplateValue("found")
@@ -753,7 +738,6 @@ class \nodoc\ iso _TestTemplateValuesLookup is UnitTest
       TemplateValues._lookup(_PropNode("missing", []))?
     })
 
-
 class \nodoc\ iso _PropTemplateValuesRoundtrip is Property1[String]
   fun name(): String => "TemplateValues roundtrip: store then retrieve"
 
@@ -765,7 +749,6 @@ class \nodoc\ iso _PropTemplateValuesRoundtrip is Property1[String]
     let v: String val = name' + "_value"
     values(name') = v
     h.assert_eq[String](v, values(name')?.string()?)
-
 
 class \nodoc\ iso _PropTemplateValuesOverrideShadows
   is Property1[(String, String, String)]
@@ -788,35 +771,28 @@ class \nodoc\ iso _PropTemplateValuesOverrideShadows
     let child = parent._override(n, TemplateValue(child_val))
     h.assert_eq[String](child_val, child(n)?.string()?)
 
-
-// ---------------------------------------------------------------------------
-// TemplateValues.scope() tests
-// ---------------------------------------------------------------------------
-
 class \nodoc\ iso _TestTemplateValuesScopeEmpty is UnitTest
   fun name(): String => "TemplateValues scope: empty child is writable"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     let parent = TemplateValues
     let child = parent.scope()
     child("key") = "value"
     h.assert_eq[String]("value", child("key")?.string()?)
 
-
 class \nodoc\ iso _TestTemplateValuesScopeFallthrough is UnitTest
   fun name(): String => "TemplateValues scope: lookups fall through to parent"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     let parent = TemplateValues
     parent("color") = "blue"
     let child = parent.scope()
     h.assert_eq[String]("blue", child("color")?.string()?)
 
-
 class \nodoc\ iso _TestTemplateValuesScopeShadow is UnitTest
   fun name(): String => "TemplateValues scope: child shadows parent"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     let parent = TemplateValues
     parent("key") = "parent_value"
     let child = parent.scope()
@@ -827,11 +803,10 @@ class \nodoc\ iso _TestTemplateValuesScopeShadow is UnitTest
     // Parent is unchanged
     h.assert_eq[String]("parent_value", parent("key")?.string()?)
 
-
 class \nodoc\ iso _TestTemplateValuesScopeMultiLevel is UnitTest
   fun name(): String => "TemplateValues scope: multi-level chain"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     let grandparent = TemplateValues
     grandparent("a") = "from_grandparent"
     let parent = grandparent.scope()
@@ -852,7 +827,6 @@ class \nodoc\ iso _TestTemplateValuesScopeMultiLevel is UnitTest
       c("missing")?
     })
 
-
 class \nodoc\ iso _PropTemplateValuesScopeFallthrough
   is Property1[(String, String)]
   fun name(): String =>
@@ -872,7 +846,6 @@ class \nodoc\ iso _PropTemplateValuesScopeFallthrough
     parent(n) = v
     let child = parent.scope()
     h.assert_eq[String](v, child(n)?.string()?)
-
 
 class \nodoc\ iso _PropTemplateValuesScopeShadows
   is Property1[(String, String, String)]
@@ -899,11 +872,6 @@ class \nodoc\ iso _PropTemplateValuesScopeShadows
     // Parent retains original
     h.assert_eq[String](parent_val, parent(n)?.string()?)
 
-
-// ---------------------------------------------------------------------------
-// Parser tests (Step 4)
-// ---------------------------------------------------------------------------
-
 class \nodoc\ iso _PropValidPropParsesToPropNode is Property1[String]
   fun name(): String => "Parser: valid prop parses to _PropNode"
 
@@ -912,7 +880,6 @@ class \nodoc\ iso _PropValidPropParsesToPropNode is Property1[String]
 
   fun ref property(stmt: String, h: PropertyHelper) ? =>
     _StmtParser.parse(stmt)? as _PropNode
-
 
 class \nodoc\ iso _PropValidPipeParsesToPipeNode is Property1[String]
   fun name(): String => "Parser: valid pipe parses to _PipeNode"
@@ -923,7 +890,6 @@ class \nodoc\ iso _PropValidPipeParsesToPipeNode is Property1[String]
   fun ref property(stmt: String, h: PropertyHelper) ? =>
     _StmtParser.parse(stmt)? as _PipeNode
 
-
 class \nodoc\ iso _PropValidLoopParsesToLoopNode is Property1[String]
   fun name(): String => "Parser: valid loop parses to _LoopNode"
 
@@ -932,7 +898,6 @@ class \nodoc\ iso _PropValidLoopParsesToLoopNode is Property1[String]
 
   fun ref property(stmt: String, h: PropertyHelper) ? =>
     _StmtParser.parse(stmt)? as _LoopNode
-
 
 class \nodoc\ iso _PropValidIfParsesToIfNode is Property1[String]
   fun name(): String => "Parser: valid if parses to _IfNode"
@@ -943,7 +908,6 @@ class \nodoc\ iso _PropValidIfParsesToIfNode is Property1[String]
   fun ref property(stmt: String, h: PropertyHelper) ? =>
     _StmtParser.parse(stmt)? as _IfNode
 
-
 class \nodoc\ iso _PropValidIfNotParsesToIfNotNode is Property1[String]
   fun name(): String => "Parser: valid ifnot parses to _IfNotNode"
 
@@ -953,7 +917,6 @@ class \nodoc\ iso _PropValidIfNotParsesToIfNotNode is Property1[String]
   fun ref property(stmt: String, h: PropertyHelper) ? =>
     _StmtParser.parse(stmt)? as _IfNotNode
 
-
 class \nodoc\ iso _PropValidElseIfParsesToElseIfNode is Property1[String]
   fun name(): String => "Parser: valid elseif parses to _ElseIfNode"
 
@@ -962,7 +925,6 @@ class \nodoc\ iso _PropValidElseIfParsesToElseIfNode is Property1[String]
 
   fun ref property(stmt: String, h: PropertyHelper) ? =>
     _StmtParser.parse(stmt)? as _ElseIfNode
-
 
 class \nodoc\ iso _PropInvalidStmtErrors is Property1[box->String]
   fun name(): String => "Parser: invalid statements error"
@@ -975,11 +937,10 @@ class \nodoc\ iso _PropInvalidStmtErrors is Property1[box->String]
       _StmtParser.parse(stmt.clone())?
     })
 
-
 class \nodoc\ iso _TestParserNodeFields is UnitTest
   fun name(): String => "Parser: node field correctness"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     // "end" → _EndNode
     match _StmtParser.parse("end")?
     | _EndNode => None
@@ -1076,11 +1037,10 @@ class \nodoc\ iso _TestParserNodeFields is UnitTest
     else h.fail("expected _ElseIfNode with dotted prop"); error
     end
 
-
 class \nodoc\ iso _TestParserPipeNodeFields is UnitTest
   fun name(): String => "Parser: pipe node field correctness"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     // "name | upper" → single 0-arg filter
     match _StmtParser.parse("name | upper")?
     | let pipe: _PipeNode =>
@@ -1158,7 +1118,6 @@ class \nodoc\ iso _TestParserPipeNodeFields is UnitTest
       end
     else h.fail("expected _PipeNode for replace"); error
     end
-
 
 class \nodoc\ iso _TestParserKeywordAmbiguity is UnitTest
   fun name(): String => "Parser: keyword ambiguity behavior"
@@ -1238,11 +1197,6 @@ class \nodoc\ iso _TestParserKeywordAmbiguity is UnitTest
     // "elsewhere" → error (else matches, "where" is leftover → pos < expected)
     h.assert_error({() ? => _StmtParser.parse("elsewhere")? })
 
-
-// ---------------------------------------------------------------------------
-// Template parse error tests (Step 5)
-// ---------------------------------------------------------------------------
-
 class \nodoc\ iso _TestParseErrorUnclosedBlock is UnitTest
   fun name(): String => "Template parse error: unclosed block"
 
@@ -1260,7 +1214,6 @@ class \nodoc\ iso _TestParseErrorUnclosedBlock is UnitTest
       Template.parse("{{ for x in xs }}{{ if y }}nested")?
     })
 
-
 class \nodoc\ iso _TestParseErrorEndWithoutBlock is UnitTest
   fun name(): String => "Template parse error: end without block"
 
@@ -1270,13 +1223,11 @@ class \nodoc\ iso _TestParseErrorEndWithoutBlock is UnitTest
       Template.parse("{{ if flag }}body{{ end }}{{ end }}")?
     })
 
-
 class \nodoc\ iso _TestParseErrorUnknownFilter is UnitTest
   fun name(): String => "Template parse error: unknown filter"
 
   fun apply(h: TestHelper) =>
     h.assert_error({() ? => Template.parse("{{ x | nonexistent }}")? })
-
 
 class \nodoc\ iso _TestParseErrorFilterArityMismatch is UnitTest
   fun name(): String => "Template parse error: filter arity mismatch"
@@ -1297,23 +1248,20 @@ class \nodoc\ iso _TestParseErrorFilterArityMismatch is UnitTest
       Template.parse("{{ x | replace(\"a\") }}")?
     })
 
-
 class \nodoc\ iso _TestParseErrorMalformedStmt is UnitTest
   fun name(): String => "Template parse error: malformed statement"
 
   fun apply(h: TestHelper) =>
     h.assert_error({() ? => Template.parse("{{ 3bad }}")? })
 
-
 class \nodoc\ iso _TestParseIncompleteDelimiters is UnitTest
   fun name(): String => "Template parse: incomplete delimiters are literal"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     // Missing }} causes text to be treated as literal
     let template = Template.parse("Hello {{ name")?
     h.assert_eq[String](
       "Hello {{ name", template.render(TemplateValues)?)
-
 
 class \nodoc\ iso _TestParseErrorElseElseIf is UnitTest
   fun name(): String => "Template parse error: else/elseif misuse"
@@ -1362,7 +1310,6 @@ class \nodoc\ iso _TestParseErrorElseElseIf is UnitTest
       Template.parse("{{ if a }}A{{ elseif b }}B")?
     })
 
-
 class \nodoc\ iso _TestParserPipeNotInControlFlow is UnitTest
   fun name(): String =>
     "Parser: pipe not allowed in control flow positions"
@@ -1388,11 +1335,6 @@ class \nodoc\ iso _TestParserPipeNotInControlFlow is UnitTest
       _StmtParser.parse("elseif name | upper")?
     })
 
-
-// ---------------------------------------------------------------------------
-// Template render tests (Step 6)
-// ---------------------------------------------------------------------------
-
 class \nodoc\ iso _PropLiteralIdentity is Property1[String]
   fun name(): String => "Render: literal text with no {{ is identity"
 
@@ -1402,7 +1344,6 @@ class \nodoc\ iso _PropLiteralIdentity is Property1[String]
   fun ref property(text: String, h: PropertyHelper) ? =>
     let template = Template.parse(text)?
     h.assert_eq[String](text, template.render(TemplateValues)?)
-
 
 class \nodoc\ iso _PropRenderDeterminism is Property1[String]
   fun name(): String => "Render: same template + values = same output"
@@ -1416,7 +1357,6 @@ class \nodoc\ iso _PropRenderDeterminism is Property1[String]
     let r1 = template.render(values)?
     let r2 = template.render(values)?
     h.assert_eq[String](r1, r2)
-
 
 class \nodoc\ iso _PropVariableSubstitution is Property1[(String, String)]
   fun name(): String => "Render: {{ n }} with values(n)=v renders as v"
@@ -1434,7 +1374,6 @@ class \nodoc\ iso _PropVariableSubstitution is Property1[(String, String)]
     values(n) = v
     h.assert_eq[String](v, template.render(values)?)
 
-
 class \nodoc\ iso _PropMissingVariableRendersEmpty is Property1[String]
   fun name(): String =>
     "Render: {{ n }} with no values renders empty"
@@ -1447,34 +1386,36 @@ class \nodoc\ iso _PropMissingVariableRendersEmpty is Property1[String]
     let template = Template.parse(source)?
     h.assert_eq[String]("", template.render(TemplateValues)?)
 
-
 class \nodoc\ iso _TestRenderNestedLoop is UnitTest
   fun name(): String => "Render: nested for loops"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     let values = TemplateValues
     // Build a list of items, each with a sub-list
     let item1_subs = Map[String, TemplateValue]
-    item1_subs("subs") = TemplateValue(
-      [TemplateValue("a"); TemplateValue("b")])
+    item1_subs("subs") =
+      TemplateValue(
+        [TemplateValue("a"); TemplateValue("b")])
     let item2_subs = Map[String, TemplateValue]
-    item2_subs("subs") = TemplateValue(
-      [TemplateValue("c")])
+    item2_subs("subs") =
+      TemplateValue(
+        [TemplateValue("c")])
 
-    values("items") = TemplateValue(
-      [TemplateValue("i1", item1_subs)
-       TemplateValue("i2", item2_subs)])
+    values("items") =
+      TemplateValue(
+        [ TemplateValue("i1", item1_subs)
+          TemplateValue("i2", item2_subs)])
 
-    let template = Template.parse(
-      "{{ for item in items }}[{{ for sub in item.subs }}" +
-      "{{ sub }}{{ end }}]{{ end }}")?
+    let template =
+      Template.parse(
+"{{ for item in items }}[{{ for sub in item.subs }}" +
+"{{ sub }}{{ end }}]{{ end }}")?
     h.assert_eq[String]("[ab][c]", template.render(values)?)
-
 
 class \nodoc\ iso _TestRenderLoopWithIf is UnitTest
   fun name(): String => "Render: if inside loop"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     let values = TemplateValues
 
     let item1_props = Map[String, TemplateValue]
@@ -1482,19 +1423,20 @@ class \nodoc\ iso _TestRenderLoopWithIf is UnitTest
     let item2_props = Map[String, TemplateValue]
     // item2 has no "active" property
 
-    values("items") = TemplateValue(
-      [TemplateValue("A", item1_props)
-       TemplateValue("B", item2_props)])
+    values("items") =
+      TemplateValue(
+        [ TemplateValue("A", item1_props)
+          TemplateValue("B", item2_props)])
 
-    let template = Template.parse(
-      "{{ for x in items }}{{ if x.active }}*{{ end }}{{ end }}")?
+    let template =
+      Template.parse(
+"{{ for x in items }}{{ if x.active }}*{{ end }}{{ end }}")?
     h.assert_eq[String]("*", template.render(values)?)
-
 
 class \nodoc\ iso _TestRenderIfWithSequence is UnitTest
   fun name(): String => "Render: if with sequence truthiness"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     let template = Template.parse("{{ if items }}yes{{ end }}")?
 
     // Empty sequence → falsy, renders empty
@@ -1512,13 +1454,13 @@ class \nodoc\ iso _TestRenderIfWithSequence is UnitTest
     v3("items") = "hello"
     h.assert_eq[String]("yes", template.render(v3)?)
 
-
 class \nodoc\ iso _TestRenderIfElseWithSequence is UnitTest
   fun name(): String => "Render: if/else with empty sequence falls to else"
 
-  fun apply(h: TestHelper)? =>
-    let template = Template.parse(
-      "{{ if items }}has items{{ else }}no items{{ end }}")?
+  fun apply(h: TestHelper) ? =>
+    let template =
+      Template.parse(
+"{{ if items }}has items{{ else }}no items{{ end }}")?
 
     // Empty sequence → else branch
     let v1 = TemplateValues
@@ -1530,11 +1472,10 @@ class \nodoc\ iso _TestRenderIfElseWithSequence is UnitTest
     v2("items") = TemplateValue([TemplateValue("a")])
     h.assert_eq[String]("has items", template.render(v2)?)
 
-
 class \nodoc\ iso _TestRenderIfNotWithSequence is UnitTest
   fun name(): String => "Render: ifnot with sequence truthiness"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     let template = Template.parse("{{ ifnot items }}empty{{ end }}")?
 
     // Empty sequence → ifnot body rendered
@@ -1547,20 +1488,21 @@ class \nodoc\ iso _TestRenderIfNotWithSequence is UnitTest
     v2("items") = TemplateValue([TemplateValue("a")])
     h.assert_eq[String]("", template.render(v2)?)
 
-
 class \nodoc\ iso _TestRenderIfGuardingLoop is UnitTest
   fun name(): String => "Render: if guarding a loop with sequences"
 
-  fun apply(h: TestHelper)? =>
-    let template = Template.parse(
-      "{{ if items }}" +
-      "{{ for i in items }}{{ i }}{{ end }}" +
-      "{{ end }}")?
+  fun apply(h: TestHelper) ? =>
+    let template =
+      Template.parse(
+"{{ if items }}" +
+"{{ for i in items }}{{ i }}{{ end }}" +
+"{{ end }}")?
 
     // Non-empty case
     let v1 = TemplateValues
-    v1("items") = TemplateValue(
-      [TemplateValue("x"); TemplateValue("y")])
+    v1("items") =
+      TemplateValue(
+        [TemplateValue("x"); TemplateValue("y")])
     h.assert_eq[String]("xy", template.render(v1)?)
 
     // Empty case
@@ -1568,11 +1510,10 @@ class \nodoc\ iso _TestRenderIfGuardingLoop is UnitTest
     v2("items") = TemplateValue([])
     h.assert_eq[String]("", template.render(v2)?)
 
-
 class \nodoc\ iso _TestRenderAdjacentPlaceholders is UnitTest
   fun name(): String => "Render: adjacent placeholders concatenate"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     let template = Template.parse("{{ a }}{{ b }}{{ c }}")?
     let values = TemplateValues
     values("a") = "1"
@@ -1580,26 +1521,26 @@ class \nodoc\ iso _TestRenderAdjacentPlaceholders is UnitTest
     values("c") = "3"
     h.assert_eq[String]("123", template.render(values)?)
 
-
 class \nodoc\ iso _TestRenderLoopVariableShadowing is UnitTest
   fun name(): String => "Render: loop variable shadows then restores outer"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     let values = TemplateValues
     values("x") = "outer"
-    values("items") = TemplateValue(
-      [TemplateValue("inner1"); TemplateValue("inner2")])
+    values("items") =
+      TemplateValue(
+        [TemplateValue("inner1"); TemplateValue("inner2")])
 
-    let template = Template.parse(
-      "{{ x }}-{{ for x in items }}{{ x }}{{ end }}-{{ x }}")?
+    let template =
+      Template.parse(
+"{{ x }}-{{ for x in items }}{{ x }}{{ end }}-{{ x }}")?
     h.assert_eq[String](
       "outer-inner1inner2-outer", template.render(values)?)
-
 
 class \nodoc\ iso _TestRenderIfElse is UnitTest
   fun name(): String => "Render: if/else branches"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     let template = Template.parse("{{ if flag }}yes{{ else }}no{{ end }}")?
 
     // Value present → if body
@@ -1610,13 +1551,13 @@ class \nodoc\ iso _TestRenderIfElse is UnitTest
     // Value absent → else body
     h.assert_eq[String]("no", template.render(TemplateValues)?)
 
-
 class \nodoc\ iso _TestRenderIfElseIf is UnitTest
   fun name(): String => "Render: if/elseif branches"
 
-  fun apply(h: TestHelper)? =>
-    let template = Template.parse(
-      "{{ if a }}A{{ elseif b }}B{{ end }}")?
+  fun apply(h: TestHelper) ? =>
+    let template =
+      Template.parse(
+"{{ if a }}A{{ elseif b }}B{{ end }}")?
 
     // First matches
     let v1 = TemplateValues
@@ -1637,13 +1578,13 @@ class \nodoc\ iso _TestRenderIfElseIf is UnitTest
     v3("b") = "yes"
     h.assert_eq[String]("A", template.render(v3)?)
 
-
 class \nodoc\ iso _TestRenderIfElseIfElse is UnitTest
   fun name(): String => "Render: if/elseif/else branches"
 
-  fun apply(h: TestHelper)? =>
-    let template = Template.parse(
-      "{{ if a }}A{{ elseif b }}B{{ else }}C{{ end }}")?
+  fun apply(h: TestHelper) ? =>
+    let template =
+      Template.parse(
+"{{ if a }}A{{ elseif b }}B{{ else }}C{{ end }}")?
 
     // First matches
     let v1 = TemplateValues
@@ -1658,13 +1599,13 @@ class \nodoc\ iso _TestRenderIfElseIfElse is UnitTest
     // None match → else body
     h.assert_eq[String]("C", template.render(TemplateValues)?)
 
-
 class \nodoc\ iso _TestRenderMultipleElseIfs is UnitTest
   fun name(): String => "Render: multiple elseif chain"
 
-  fun apply(h: TestHelper)? =>
-    let template = Template.parse(
-      "{{ if a }}A{{ elseif b }}B{{ elseif c }}C{{ else }}D{{ end }}")?
+  fun apply(h: TestHelper) ? =>
+    let template =
+      Template.parse(
+"{{ if a }}A{{ elseif b }}B{{ elseif c }}C{{ else }}D{{ end }}")?
 
     let v1 = TemplateValues
     v1("a") = "yes"
@@ -1686,35 +1627,36 @@ class \nodoc\ iso _TestRenderMultipleElseIfs is UnitTest
     v5("c") = "yes"
     h.assert_eq[String]("B", template.render(v5)?)
 
-
 class \nodoc\ iso _TestRenderIfElseInsideLoop is UnitTest
   fun name(): String => "Render: if/else inside for loop"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     let values = TemplateValues
 
     let item1_props = Map[String, TemplateValue]
     item1_props("active") = TemplateValue("yes")
     let item2_props = Map[String, TemplateValue]
 
-    values("items") = TemplateValue(
-      [TemplateValue("A", item1_props)
-       TemplateValue("B", item2_props)])
+    values("items") =
+      TemplateValue(
+        [ TemplateValue("A", item1_props)
+          TemplateValue("B", item2_props)])
 
-    let template = Template.parse(
-      "{{ for x in items }}" +
-      "{{ if x.active }}+{{ else }}-{{ end }}" +
-      "{{ end }}")?
+    let template =
+      Template.parse(
+"{{ for x in items }}" +
+"{{ if x.active }}+{{ else }}-{{ end }}" +
+"{{ end }}")?
     h.assert_eq[String]("+-", template.render(values)?)
-
 
 class \nodoc\ iso _TestRenderNestedIfElse is UnitTest
   fun name(): String => "Render: nested if/else blocks"
 
-  fun apply(h: TestHelper)? =>
-    let template = Template.parse(
-      "{{ if a }}{{ if b }}AB{{ else }}A{{ end }}" +
-      "{{ else }}{{ if b }}B{{ else }}none{{ end }}{{ end }}")?
+  fun apply(h: TestHelper) ? =>
+    let template =
+      Template.parse(
+"{{ if a }}{{ if b }}AB{{ else }}A{{ end }}" +
+"{{ else }}{{ if b }}B{{ else }}none{{ end }}{{ end }}")?
 
     // Both present
     let v1 = TemplateValues
@@ -1735,17 +1677,13 @@ class \nodoc\ iso _TestRenderNestedIfElse is UnitTest
     // Neither
     h.assert_eq[String]("none", template.render(TemplateValues)?)
 
-
-// ---------------------------------------------------------------------------
-// ifnot render tests
-// ---------------------------------------------------------------------------
-
 class \nodoc\ iso _TestRenderIfNot is UnitTest
   fun name(): String => "Render: ifnot renders when absent"
 
-  fun apply(h: TestHelper)? =>
-    let template = Template.parse(
-      "{{ ifnot name }}Anonymous{{ end }}")?
+  fun apply(h: TestHelper) ? =>
+    let template =
+      Template.parse(
+"{{ ifnot name }}Anonymous{{ end }}")?
 
     // Variable absent → body rendered
     h.assert_eq[String]("Anonymous", template.render(TemplateValues)?)
@@ -1755,13 +1693,13 @@ class \nodoc\ iso _TestRenderIfNot is UnitTest
     values("name") = "Alice"
     h.assert_eq[String]("", template.render(values)?)
 
-
 class \nodoc\ iso _TestRenderIfNotElse is UnitTest
   fun name(): String => "Render: ifnot/else branches"
 
-  fun apply(h: TestHelper)? =>
-    let template = Template.parse(
-      "{{ ifnot name }}Anonymous{{ else }}{{ name }}{{ end }}")?
+  fun apply(h: TestHelper) ? =>
+    let template =
+      Template.parse(
+"{{ ifnot name }}Anonymous{{ else }}{{ name }}{{ end }}")?
 
     // Variable absent → ifnot body
     h.assert_eq[String]("Anonymous", template.render(TemplateValues)?)
@@ -1771,13 +1709,13 @@ class \nodoc\ iso _TestRenderIfNotElse is UnitTest
     values("name") = "Alice"
     h.assert_eq[String]("Alice", template.render(values)?)
 
-
 class \nodoc\ iso _TestRenderIfNotElseIf is UnitTest
   fun name(): String => "Render: ifnot/elseif branches"
 
-  fun apply(h: TestHelper)? =>
-    let template = Template.parse(
-      "{{ ifnot a }}no-a{{ elseif b }}has-b{{ end }}")?
+  fun apply(h: TestHelper) ? =>
+    let template =
+      Template.parse(
+"{{ ifnot a }}no-a{{ elseif b }}has-b{{ end }}")?
 
     // a absent → ifnot body
     h.assert_eq[String]("no-a", template.render(TemplateValues)?)
@@ -1793,13 +1731,13 @@ class \nodoc\ iso _TestRenderIfNotElseIf is UnitTest
     v2("a") = "yes"
     h.assert_eq[String]("", template.render(v2)?)
 
-
 class \nodoc\ iso _TestRenderIfNotElseIfElse is UnitTest
   fun name(): String => "Render: ifnot/elseif/else full chain"
 
-  fun apply(h: TestHelper)? =>
-    let template = Template.parse(
-      "{{ ifnot a }}no-a{{ elseif b }}has-b{{ else }}fallback{{ end }}")?
+  fun apply(h: TestHelper) ? =>
+    let template =
+      Template.parse(
+"{{ ifnot a }}no-a{{ elseif b }}has-b{{ else }}fallback{{ end }}")?
 
     // a absent → ifnot body
     h.assert_eq[String]("no-a", template.render(TemplateValues)?)
@@ -1815,35 +1753,36 @@ class \nodoc\ iso _TestRenderIfNotElseIfElse is UnitTest
     v2("a") = "yes"
     h.assert_eq[String]("fallback", template.render(v2)?)
 
-
 class \nodoc\ iso _TestRenderIfNotInsideLoop is UnitTest
   fun name(): String => "Render: ifnot nested inside for loop"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     let values = TemplateValues
 
     let item1_props = Map[String, TemplateValue]
     item1_props("label") = TemplateValue("tagged")
     let item2_props = Map[String, TemplateValue]
 
-    values("items") = TemplateValue(
-      [TemplateValue("A", item1_props)
-       TemplateValue("B", item2_props)])
+    values("items") =
+      TemplateValue(
+        [ TemplateValue("A", item1_props)
+          TemplateValue("B", item2_props)])
 
-    let template = Template.parse(
-      "{{ for x in items }}" +
-      "{{ ifnot x.label }}unlabeled{{ else }}{{ x.label }}{{ end }}," +
-      "{{ end }}")?
+    let template =
+      Template.parse(
+"{{ for x in items }}" +
+"{{ ifnot x.label }}unlabeled{{ else }}{{ x.label }}{{ end }}," +
+"{{ end }}")?
     h.assert_eq[String]("tagged,unlabeled,", template.render(values)?)
-
 
 class \nodoc\ iso _TestRenderNestedIfNotWithIf is UnitTest
   fun name(): String => "Render: if nested inside ifnot"
 
-  fun apply(h: TestHelper)? =>
-    let template = Template.parse(
-      "{{ ifnot a }}{{ if b }}B-no-A{{ else }}no-A-no-B{{ end }}" +
-      "{{ else }}has-A{{ end }}")?
+  fun apply(h: TestHelper) ? =>
+    let template =
+      Template.parse(
+"{{ ifnot a }}{{ if b }}B-no-A{{ else }}no-A-no-B{{ end }}" +
+"{{ else }}has-A{{ end }}")?
 
     // a absent, b present
     let v1 = TemplateValues
@@ -1857,11 +1796,6 @@ class \nodoc\ iso _TestRenderNestedIfNotWithIf is UnitTest
     let v2 = TemplateValues
     v2("a") = "yes"
     h.assert_eq[String]("has-A", template.render(v2)?)
-
-
-// ---------------------------------------------------------------------------
-// Filter pipe render tests
-// ---------------------------------------------------------------------------
 
 class \nodoc\ iso _PropPipeBasicFilter is Property1[String]
   fun name(): String =>
@@ -1877,7 +1811,6 @@ class \nodoc\ iso _PropPipeBasicFilter is Property1[String]
     let expected = val'.clone()
     expected.upper_in_place()
     h.assert_eq[String](consume expected, template.render(values)?)
-
 
 class \nodoc\ iso _PropPipeDefaultMissing
   is Property1[(String, String)]
@@ -1895,7 +1828,6 @@ class \nodoc\ iso _PropPipeDefaultMissing
       "{{ " + n + " | default(\"" + fallback + "\") }}"
     let template = Template.parse(source)?
     h.assert_eq[String](fallback, template.render(TemplateValues)?)
-
 
 class \nodoc\ iso _PropPipeDefaultPresent
   is Property1[(String, String, String)]
@@ -1925,41 +1857,37 @@ class \nodoc\ iso _PropPipeDefaultPresent
     values(n) = actual_val
     h.assert_eq[String](actual_val, template.render(values)?)
 
-
 class \nodoc\ iso _TestRenderPipeUpper is UnitTest
   fun name(): String => "Render: pipe upper filter"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     let template = Template.parse("{{ name | upper }}")?
     let values = TemplateValues
     values("name") = "hello"
     h.assert_eq[String]("HELLO", template.render(values)?)
 
-
 class \nodoc\ iso _TestRenderPipeLower is UnitTest
   fun name(): String => "Render: pipe lower filter"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     let template = Template.parse("{{ name | lower }}")?
     let values = TemplateValues
     values("name") = "HELLO"
     h.assert_eq[String]("hello", template.render(values)?)
 
-
 class \nodoc\ iso _TestRenderPipeTrim is UnitTest
   fun name(): String => "Render: pipe trim filter"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     let template = Template.parse("{{ name | trim }}")?
     let values = TemplateValues
     values("name") = "  hello  "
     h.assert_eq[String]("hello", template.render(values)?)
 
-
 class \nodoc\ iso _TestRenderPipeCapitalize is UnitTest
   fun name(): String => "Render: pipe capitalize filter"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     let template = Template.parse("{{ name | capitalize }}")?
 
     let v1 = TemplateValues
@@ -1974,11 +1902,10 @@ class \nodoc\ iso _TestRenderPipeCapitalize is UnitTest
     v3("name") = "a"
     h.assert_eq[String]("A", template.render(v3)?)
 
-
 class \nodoc\ iso _TestRenderPipeTitle is UnitTest
   fun name(): String => "Render: pipe title filter"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     let template = Template.parse("{{ name | title }}")?
 
     // Basic title case
@@ -2011,13 +1938,13 @@ class \nodoc\ iso _TestRenderPipeTitle is UnitTest
     v6("name") = "hello  world"
     h.assert_eq[String]("Hello  World", template.render(v6)?)
 
-
 class \nodoc\ iso _TestRenderPipeDefault is UnitTest
   fun name(): String => "Render: pipe default filter"
 
-  fun apply(h: TestHelper)? =>
-    let template = Template.parse(
-      "{{ name | default(\"anon\") }}")?
+  fun apply(h: TestHelper) ? =>
+    let template =
+      Template.parse(
+"{{ name | default(\"anon\") }}")?
 
     // Missing → default
     h.assert_eq[String]("anon", template.render(TemplateValues)?)
@@ -2032,32 +1959,30 @@ class \nodoc\ iso _TestRenderPipeDefault is UnitTest
     v2("name") = ""
     h.assert_eq[String]("anon", template.render(v2)?)
 
-
 class \nodoc\ iso _TestRenderPipeReplace is UnitTest
   fun name(): String => "Render: pipe replace filter"
 
-  fun apply(h: TestHelper)? =>
-    let template = Template.parse(
-      "{{ msg | replace(\"world\", \"pony\") }}")?
+  fun apply(h: TestHelper) ? =>
+    let template =
+      Template.parse(
+"{{ msg | replace(\"world\", \"pony\") }}")?
     let values = TemplateValues
     values("msg") = "hello world"
     h.assert_eq[String]("hello pony", template.render(values)?)
 
-
 class \nodoc\ iso _TestRenderPipeChain is UnitTest
   fun name(): String => "Render: chained filters"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     let template = Template.parse("{{ name | trim | upper }}")?
     let values = TemplateValues
     values("name") = "  hello  "
     h.assert_eq[String]("HELLO", template.render(values)?)
 
-
 class \nodoc\ iso _TestRenderPipeDottedSource is UnitTest
   fun name(): String => "Render: pipe with dotted source"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     let template = Template.parse("{{ user.name | upper }}")?
     let values = TemplateValues
     let user_props = Map[String, TemplateValue]
@@ -2065,11 +1990,10 @@ class \nodoc\ iso _TestRenderPipeDottedSource is UnitTest
     values("user") = TemplateValue("u", user_props)
     h.assert_eq[String]("ALICE", template.render(values)?)
 
-
 class \nodoc\ iso _TestRenderPipeVariableArg is UnitTest
   fun name(): String => "Render: pipe filter with variable argument"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     let template = Template.parse("{{ name | default(fallback) }}")?
     let values = TemplateValues
     values("fallback") = "anon"
@@ -2081,25 +2005,26 @@ class \nodoc\ iso _TestRenderPipeVariableArg is UnitTest
     values("name") = "Alice"
     h.assert_eq[String]("Alice", template.render(values)?)
 
-
 class \nodoc\ iso _TestRenderPipeInsideLoop is UnitTest
   fun name(): String => "Render: pipe inside for loop"
 
-  fun apply(h: TestHelper)? =>
-    let template = Template.parse(
-      "{{ for name in names }}{{ name | upper }} {{ end }}")?
+  fun apply(h: TestHelper) ? =>
+    let template =
+      Template.parse(
+"{{ for name in names }}{{ name | upper }} {{ end }}")?
     let values = TemplateValues
-    values("names") = TemplateValue(
-      [TemplateValue("alice"); TemplateValue("bob")])
+    values("names") =
+      TemplateValue(
+        [TemplateValue("alice"); TemplateValue("bob")])
     h.assert_eq[String]("ALICE BOB ", template.render(values)?)
-
 
 class \nodoc\ iso _TestRenderPipeInsideIf is UnitTest
   fun name(): String => "Render: pipe inside conditional"
 
-  fun apply(h: TestHelper)? =>
-    let template = Template.parse(
-      "{{ if show }}{{ name | upper }}{{ end }}")?
+  fun apply(h: TestHelper) ? =>
+    let template =
+      Template.parse(
+"{{ if show }}{{ name | upper }}{{ end }}")?
 
     let v1 = TemplateValues
     v1("show") = "yes"
@@ -2108,16 +2033,16 @@ class \nodoc\ iso _TestRenderPipeInsideIf is UnitTest
 
     h.assert_eq[String]("", template.render(TemplateValues)?)
 
-
 class \nodoc\ iso _TestRenderPipeDefaultThenUpper is UnitTest
   fun name(): String =>
     "Render: default then upper (migration from old syntax)"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     // Old: {{ upper(name | default("anon")) }}
     // New: {{ name | default("anon") | upper }}
-    let template = Template.parse(
-      "{{ name | default(\"anon\") | upper }}")?
+    let template =
+      Template.parse(
+"{{ name | default(\"anon\") | upper }}")?
 
     // Missing → default → upper
     h.assert_eq[String]("ANON", template.render(TemplateValues)?)
@@ -2127,55 +2052,52 @@ class \nodoc\ iso _TestRenderPipeDefaultThenUpper is UnitTest
     values("name") = "alice"
     h.assert_eq[String]("ALICE", template.render(values)?)
 
-
 class \nodoc\ iso _TestRenderPipeCustomFilter is UnitTest
   fun name(): String => "Render: custom filter via TemplateContext"
 
-  fun apply(h: TestHelper)? =>
-    let ctx = TemplateContext(
-      recover val
-        let filters = Map[String, AnyFilter]
-        filters("double") = recover val
-          object is Filter
-            fun apply(input: String): String =>
-              input + input
-          end
-        end
-        filters
-      end
-    )
+  fun apply(h: TestHelper) ? =>
+    let ctx =
+      TemplateContext(
+recover val
+let filters = Map[String, AnyFilter]
+filters("double") =
+  recover val
+  object is Filter
+    fun apply(input: String): String =>
+      input + input
+  end
+end
+filters
+end
+)
     let template = Template.parse("{{ x | double }}", ctx)?
     let values = TemplateValues
     values("x") = "ab"
     h.assert_eq[String]("abab", template.render(values)?)
 
-
 class \nodoc\ iso _TestRenderPipeOverrideBuiltin is UnitTest
   fun name(): String => "Render: override built-in filter"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     // Override "upper" with a filter that returns "OVERRIDDEN"
-    let ctx = TemplateContext(
-      recover val
-        let filters = Map[String, AnyFilter]
-        filters("upper") = recover val
-          object is Filter
-            fun apply(input: String): String =>
-              "OVERRIDDEN"
-          end
-        end
-        filters
-      end
-    )
+    let ctx =
+      TemplateContext(
+recover val
+let filters = Map[String, AnyFilter]
+filters("upper") =
+  recover val
+  object is Filter
+    fun apply(input: String): String =>
+      "OVERRIDDEN"
+  end
+end
+filters
+end
+)
     let template = Template.parse("{{ x | upper }}", ctx)?
     let values = TemplateValues
     values("x") = "hello"
     h.assert_eq[String]("OVERRIDDEN", template.render(values)?)
-
-
-// ---------------------------------------------------------------------------
-// Include parser tests
-// ---------------------------------------------------------------------------
 
 class \nodoc\ iso _PropValidIncludeParsesToIncludeNode is Property1[String]
   fun name(): String => "Parser: valid include parses to _IncludeNode"
@@ -2186,11 +2108,10 @@ class \nodoc\ iso _PropValidIncludeParsesToIncludeNode is Property1[String]
   fun ref property(stmt: String, h: PropertyHelper) ? =>
     _StmtParser.parse(stmt)? as _IncludeNode
 
-
 class \nodoc\ iso _TestParserIncludeNodeFields is UnitTest
   fun name(): String => "Parser: include node field correctness"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     // include "header" → _IncludeNode(name="header")
     match _StmtParser.parse("include \"header\"")?
     | let inc: _IncludeNode =>
@@ -2212,7 +2133,6 @@ class \nodoc\ iso _TestParserIncludeNodeFields is UnitTest
     else h.fail("expected _IncludeNode with digits"); error
     end
 
-
 class \nodoc\ iso _TestParserIncludeKeywordAmbiguity is UnitTest
   fun name(): String => "Parser: include keyword ambiguity"
 
@@ -2227,11 +2147,6 @@ class \nodoc\ iso _TestParserIncludeKeywordAmbiguity is UnitTest
       _StmtParser.parse("includefoo")? as _PropNode
     })
 
-
-// ---------------------------------------------------------------------------
-// Include parse error tests
-// ---------------------------------------------------------------------------
-
 class \nodoc\ iso _TestParseErrorMissingPartial is UnitTest
   fun name(): String => "Template parse error: missing partial"
 
@@ -2240,14 +2155,14 @@ class \nodoc\ iso _TestParseErrorMissingPartial is UnitTest
       Template.parse("{{ include \"missing\" }}")?
     })
 
-
 class \nodoc\ iso _TestParseErrorCircularInclude is UnitTest
   fun name(): String => "Template parse error: circular include"
 
   fun apply(h: TestHelper) =>
     // Self-include
     h.assert_error({() ? =>
-      let partials = recover val
+      let partials =
+        recover val
         let m = Map[String, String]
         m("self") = "{{ include \"self\" }}"
         m
@@ -2258,7 +2173,8 @@ class \nodoc\ iso _TestParseErrorCircularInclude is UnitTest
 
     // Mutual cycle: a includes b, b includes a
     h.assert_error({() ? =>
-      let partials = recover val
+      let partials =
+        recover val
         let m = Map[String, String]
         m("a") = "{{ include \"b\" }}"
         m("b") = "{{ include \"a\" }}"
@@ -2268,16 +2184,12 @@ class \nodoc\ iso _TestParseErrorCircularInclude is UnitTest
       Template.parse("{{ include \"a\" }}", ctx)?
     })
 
-
-// ---------------------------------------------------------------------------
-// Include render tests
-// ---------------------------------------------------------------------------
-
 class \nodoc\ iso _TestRenderInclude is UnitTest
   fun name(): String => "Render: basic include with variable substitution"
 
-  fun apply(h: TestHelper)? =>
-    let partials = recover val
+  fun apply(h: TestHelper) ? =>
+    let partials =
+      recover val
       let m = Map[String, String]
       m("greeting") = "Hello {{ name }}!"
       m
@@ -2288,19 +2200,20 @@ class \nodoc\ iso _TestRenderInclude is UnitTest
     values("name") = "world"
     h.assert_eq[String](">> Hello world! <<", template.render(values)?)
 
-
 class \nodoc\ iso _TestRenderIncludeInsideIf is UnitTest
   fun name(): String => "Render: include inside conditional"
 
-  fun apply(h: TestHelper)? =>
-    let partials = recover val
+  fun apply(h: TestHelper) ? =>
+    let partials =
+      recover val
       let m = Map[String, String]
       m("badge") = "[{{ role }}]"
       m
     end
     let ctx = TemplateContext(where partials' = partials)
-    let template = Template.parse(
-      "{{ if role }}{{ include \"badge\" }}{{ end }}", ctx)?
+    let template =
+      Template.parse(
+"{{ if role }}{{ include \"badge\" }}{{ end }}", ctx)?
 
     // With role
     let v1 = TemplateValues
@@ -2310,30 +2223,32 @@ class \nodoc\ iso _TestRenderIncludeInsideIf is UnitTest
     // Without role
     h.assert_eq[String]("", template.render(TemplateValues)?)
 
-
 class \nodoc\ iso _TestRenderIncludeInsideLoop is UnitTest
   fun name(): String => "Render: include inside loop"
 
-  fun apply(h: TestHelper)? =>
-    let partials = recover val
+  fun apply(h: TestHelper) ? =>
+    let partials =
+      recover val
       let m = Map[String, String]
       m("item") = "<{{ x }}>"
       m
     end
     let ctx = TemplateContext(where partials' = partials)
-    let template = Template.parse(
-      "{{ for x in items }}{{ include \"item\" }}{{ end }}", ctx)?
+    let template =
+      Template.parse(
+"{{ for x in items }}{{ include \"item\" }}{{ end }}", ctx)?
     let values = TemplateValues
-    values("items") = TemplateValue(
-      [TemplateValue("a"); TemplateValue("b"); TemplateValue("c")])
+    values("items") =
+      TemplateValue(
+        [TemplateValue("a"); TemplateValue("b"); TemplateValue("c")])
     h.assert_eq[String]("<a><b><c>", template.render(values)?)
-
 
 class \nodoc\ iso _TestRenderNestedIncludes is UnitTest
   fun name(): String => "Render: nested includes (A includes B includes C)"
 
-  fun apply(h: TestHelper)? =>
-    let partials = recover val
+  fun apply(h: TestHelper) ? =>
+    let partials =
+      recover val
       let m = Map[String, String]
       m("a") = "[{{ include \"b\" }}]"
       m("b") = "({{ include \"c\" }})"
@@ -2346,33 +2261,35 @@ class \nodoc\ iso _TestRenderNestedIncludes is UnitTest
     values("x") = "deep"
     h.assert_eq[String]("[(deep)]", template.render(values)?)
 
-
 class \nodoc\ iso _TestRenderMultipleIncludes is UnitTest
   fun name(): String => "Render: multiple includes in one template"
 
-  fun apply(h: TestHelper)? =>
-    let partials = recover val
+  fun apply(h: TestHelper) ? =>
+    let partials =
+      recover val
       let m = Map[String, String]
       m("header") = "=={{ title }}=="
       m("footer") = "--end--"
       m
     end
     let ctx = TemplateContext(where partials' = partials)
-    let template = Template.parse(
-      "{{ include \"header\" }}\nbody\n{{ include \"footer\" }}", ctx)?
+    let template =
+      Template.parse(
+"{{ include \"header\" }}\nbody\n{{ include \"footer\" }}", ctx)?
     let values = TemplateValues
     values("title") = "Page"
     h.assert_eq[String]("==Page==\nbody\n--end--", template.render(values)?)
 
-
 class \nodoc\ iso _TestRenderIncludeWithBlocks is UnitTest
   fun name(): String => "Render: include containing its own blocks"
 
-  fun apply(h: TestHelper)? =>
-    let partials = recover val
+  fun apply(h: TestHelper) ? =>
+    let partials =
+      recover val
       let m = Map[String, String]
       m("list") =
-        "{{ if items }}{{ for i in items }}{{ i }},{{ end }}{{ else }}none{{ end }}"
+        "{{ if items }}{{ for i in items }}{{ i }}," +
+        "{{ end }}{{ else }}none{{ end }}"
       m
     end
     let ctx = TemplateContext(where partials' = partials)
@@ -2380,19 +2297,15 @@ class \nodoc\ iso _TestRenderIncludeWithBlocks is UnitTest
 
     // With items
     let v1 = TemplateValues
-    v1("items") = TemplateValue(
-      [TemplateValue("x"); TemplateValue("y")])
+    v1("items") =
+      TemplateValue(
+        [TemplateValue("x"); TemplateValue("y")])
     h.assert_eq[String]("Items: x,y,", template.render(v1)?)
 
     // Without items (empty sequence)
     let v2 = TemplateValues
     v2("items") = TemplateValue(Array[TemplateValue])
     h.assert_eq[String]("Items: none", template.render(v2)?)
-
-
-// ---------------------------------------------------------------------------
-// Extends/block parser tests
-// ---------------------------------------------------------------------------
 
 class \nodoc\ iso _PropValidExtendsParsesToExtendsNode is Property1[String]
   fun name(): String => "Parser: valid extends parses to _ExtendsNode"
@@ -2403,7 +2316,6 @@ class \nodoc\ iso _PropValidExtendsParsesToExtendsNode is Property1[String]
   fun ref property(stmt: String, h: PropertyHelper) ? =>
     _StmtParser.parse(stmt)? as _ExtendsNode
 
-
 class \nodoc\ iso _PropValidBlockParsesToBlockNode is Property1[String]
   fun name(): String => "Parser: valid block parses to _BlockNode"
 
@@ -2413,11 +2325,10 @@ class \nodoc\ iso _PropValidBlockParsesToBlockNode is Property1[String]
   fun ref property(stmt: String, h: PropertyHelper) ? =>
     _StmtParser.parse(stmt)? as _BlockNode
 
-
 class \nodoc\ iso _TestParserExtendsBlockNodeFields is UnitTest
   fun name(): String => "Parser: extends and block node field correctness"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     // extends "base" → _ExtendsNode(name="base")
     match _StmtParser.parse("extends \"base\"")?
     | let ext: _ExtendsNode =>
@@ -2445,7 +2356,6 @@ class \nodoc\ iso _TestParserExtendsBlockNodeFields is UnitTest
       h.assert_eq[String]("head", blk.name)
     else h.fail("expected _BlockNode"); error
     end
-
 
 class \nodoc\ iso _TestParserExtendsBlockKeywordAmbiguity is UnitTest
   fun name(): String => "Parser: extends/block keyword ambiguity"
@@ -2475,18 +2385,14 @@ class \nodoc\ iso _TestParserExtendsBlockKeywordAmbiguity is UnitTest
       end
     })
 
-
-// ---------------------------------------------------------------------------
-// Extends/block parse error tests
-// ---------------------------------------------------------------------------
-
 class \nodoc\ iso _TestParseErrorExtendsNotFirst is UnitTest
   fun name(): String => "Template parse error: extends not first statement"
 
   fun apply(h: TestHelper) =>
     // extends after a variable substitution
     h.assert_error({() ? =>
-      let partials = recover val
+      let partials =
+        recover val
         let m = Map[String, String]
         m("base") = "base content"
         m
@@ -2497,7 +2403,8 @@ class \nodoc\ iso _TestParseErrorExtendsNotFirst is UnitTest
 
     // extends after an if block
     h.assert_error({() ? =>
-      let partials = recover val
+      let partials =
+        recover val
         let m = Map[String, String]
         m("base") = "base content"
         m
@@ -2507,7 +2414,6 @@ class \nodoc\ iso _TestParseErrorExtendsNotFirst is UnitTest
         "{{ if x }}y{{ end }}{{ extends \"base\" }}", ctx)?
     })
 
-
 class \nodoc\ iso _TestParseErrorExtendsMissingBase is UnitTest
   fun name(): String => "Template parse error: extends references missing base"
 
@@ -2516,14 +2422,14 @@ class \nodoc\ iso _TestParseErrorExtendsMissingBase is UnitTest
       Template.parse("{{ extends \"nonexistent\" }}")?
     })
 
-
 class \nodoc\ iso _TestParseErrorCircularExtends is UnitTest
   fun name(): String => "Template parse error: circular extends"
 
   fun apply(h: TestHelper) =>
     // Self-extends
     h.assert_error({() ? =>
-      let partials = recover val
+      let partials =
+        recover val
         let m = Map[String, String]
         m("self") = "{{ extends \"self\" }}"
         m
@@ -2534,7 +2440,8 @@ class \nodoc\ iso _TestParseErrorCircularExtends is UnitTest
 
     // Mutual cycle: a extends b, b extends a
     h.assert_error({() ? =>
-      let partials = recover val
+      let partials =
+        recover val
         let m = Map[String, String]
         m("a") = "{{ extends \"b\" }}"
         m("b") = "{{ extends \"a\" }}"
@@ -2544,7 +2451,6 @@ class \nodoc\ iso _TestParseErrorCircularExtends is UnitTest
       Template.parse("{{ extends \"a\" }}", ctx)?
     })
 
-
 class \nodoc\ iso _TestParseErrorElseAfterBlock is UnitTest
   fun name(): String => "Template parse error: else after block"
 
@@ -2552,7 +2458,6 @@ class \nodoc\ iso _TestParseErrorElseAfterBlock is UnitTest
     h.assert_error({() ? =>
       Template.parse("{{ block content }}body{{ else }}alt{{ end }}")?
     })
-
 
 class \nodoc\ iso _TestParseErrorElseIfAfterBlock is UnitTest
   fun name(): String => "Template parse error: elseif after block"
@@ -2563,14 +2468,14 @@ class \nodoc\ iso _TestParseErrorElseIfAfterBlock is UnitTest
         "{{ block content }}body{{ elseif x }}alt{{ end }}")?
     })
 
-
 class \nodoc\ iso _TestParseErrorDuplicateBlock is UnitTest
   fun name(): String =>
     "Template parse error: duplicate block names in child"
 
   fun apply(h: TestHelper) =>
     h.assert_error({() ? =>
-      let partials = recover val
+      let partials =
+        recover val
         let m = Map[String, String]
         m("base") = "{{ block slot }}default{{ end }}"
         m
@@ -2583,16 +2488,12 @@ class \nodoc\ iso _TestParseErrorDuplicateBlock is UnitTest
         ctx)?
     })
 
-
-// ---------------------------------------------------------------------------
-// Inheritance render tests
-// ---------------------------------------------------------------------------
-
 class \nodoc\ iso _TestRenderInheritanceBasic is UnitTest
   fun name(): String => "Render: basic inheritance overrides one block"
 
-  fun apply(h: TestHelper)? =>
-    let partials = recover val
+  fun apply(h: TestHelper) ? =>
+    let partials =
+      recover val
       let m = Map[String, String]
       m("base") =
         "<head>{{ block head }}default{{ end }}</head>" +
@@ -2600,22 +2501,23 @@ class \nodoc\ iso _TestRenderInheritanceBasic is UnitTest
       m
     end
     let ctx = TemplateContext(where partials' = partials)
-    let template = Template.parse(
-      "{{ extends \"base\" }}" +
-      "{{ block content }}Hello!{{ end }}",
-      ctx)?
+    let template =
+      Template.parse(
+"{{ extends \"base\" }}" +
+"{{ block content }}Hello!{{ end }}",
+ctx)?
     let values = TemplateValues
     h.assert_eq[String](
       "<head>default</head><body>Hello!</body>",
       template.render(values)?)
 
-
 class \nodoc\ iso _TestRenderInheritanceMultipleBlocks is UnitTest
   fun name(): String =>
     "Render: inheritance overrides subset of blocks"
 
-  fun apply(h: TestHelper)? =>
-    let partials = recover val
+  fun apply(h: TestHelper) ? =>
+    let partials =
+      recover val
       let m = Map[String, String]
       m("base") =
         "{{ block a }}A{{ end }}-{{ block b }}B{{ end }}" +
@@ -2625,19 +2527,20 @@ class \nodoc\ iso _TestRenderInheritanceMultipleBlocks is UnitTest
     let ctx = TemplateContext(where partials' = partials)
 
     // Override only 'a' and 'c', leave 'b' as default
-    let template = Template.parse(
-      "{{ extends \"base\" }}" +
-      "{{ block a }}X{{ end }}" +
-      "{{ block c }}Z{{ end }}",
-      ctx)?
+    let template =
+      Template.parse(
+"{{ extends \"base\" }}" +
+"{{ block a }}X{{ end }}" +
+"{{ block c }}Z{{ end }}",
+ctx)?
     h.assert_eq[String]("X-B-Z", template.render(TemplateValues)?)
-
 
 class \nodoc\ iso _TestRenderInheritanceEmptyDefault is UnitTest
   fun name(): String => "Render: block with empty default"
 
-  fun apply(h: TestHelper)? =>
-    let partials = recover val
+  fun apply(h: TestHelper) ? =>
+    let partials =
+      recover val
       let m = Map[String, String]
       m("base") = "before{{ block slot }}{{ end }}after"
       m
@@ -2645,31 +2548,34 @@ class \nodoc\ iso _TestRenderInheritanceEmptyDefault is UnitTest
     let ctx = TemplateContext(where partials' = partials)
 
     // Without override — empty default
-    let t1 = Template.parse(
-      "{{ extends \"base\" }}", ctx)?
+    let t1 =
+      Template.parse(
+"{{ extends \"base\" }}", ctx)?
     h.assert_eq[String]("beforeafter", t1.render(TemplateValues)?)
 
     // With override — fills slot
-    let t2 = Template.parse(
-      "{{ extends \"base\" }}{{ block slot }}FILL{{ end }}", ctx)?
+    let t2 =
+      Template.parse(
+"{{ extends \"base\" }}{{ block slot }}FILL{{ end }}", ctx)?
     h.assert_eq[String]("beforeFILLafter", t2.render(TemplateValues)?)
-
 
 class \nodoc\ iso _TestRenderInheritanceBlockInsideIf is UnitTest
   fun name(): String => "Render: block inside if/for in base"
 
-  fun apply(h: TestHelper)? =>
-    let partials = recover val
+  fun apply(h: TestHelper) ? =>
+    let partials =
+      recover val
       let m = Map[String, String]
       m("base") =
         "{{ if show }}{{ block content }}default{{ end }}{{ end }}"
       m
     end
     let ctx = TemplateContext(where partials' = partials)
-    let template = Template.parse(
-      "{{ extends \"base\" }}" +
-      "{{ block content }}overridden{{ end }}",
-      ctx)?
+    let template =
+      Template.parse(
+"{{ extends \"base\" }}" +
+"{{ block content }}overridden{{ end }}",
+ctx)?
 
     // show present → overridden block renders
     let v1 = TemplateValues
@@ -2679,12 +2585,12 @@ class \nodoc\ iso _TestRenderInheritanceBlockInsideIf is UnitTest
     // show absent → if body not rendered
     h.assert_eq[String]("", template.render(TemplateValues)?)
 
-
 class \nodoc\ iso _TestRenderInheritanceMultiLevel is UnitTest
   fun name(): String => "Render: multi-level inheritance (3 levels)"
 
-  fun apply(h: TestHelper)? =>
-    let partials = recover val
+  fun apply(h: TestHelper) ? =>
+    let partials =
+      recover val
       let m = Map[String, String]
       m("grandparent") =
         "[{{ block title }}GP{{ end }}|{{ block body }}GP-body{{ end }}]"
@@ -2696,18 +2602,19 @@ class \nodoc\ iso _TestRenderInheritanceMultiLevel is UnitTest
     let ctx = TemplateContext(where partials' = partials)
 
     // Child overrides title, parent already overrode body
-    let template = Template.parse(
-      "{{ extends \"parent\" }}" +
-      "{{ block title }}Child{{ end }}",
-      ctx)?
+    let template =
+      Template.parse(
+"{{ extends \"parent\" }}" +
+"{{ block title }}Child{{ end }}",
+ctx)?
     h.assert_eq[String]("[Child|P-body]", template.render(TemplateValues)?)
-
 
 class \nodoc\ iso _TestRenderInheritanceWithIncludes is UnitTest
   fun name(): String => "Render: inheritance combined with includes"
 
-  fun apply(h: TestHelper)? =>
-    let partials = recover val
+  fun apply(h: TestHelper) ? =>
+    let partials =
+      recover val
       let m = Map[String, String]
       m("nav") = "[NAV]"
       m("base") =
@@ -2715,47 +2622,44 @@ class \nodoc\ iso _TestRenderInheritanceWithIncludes is UnitTest
       m
     end
     let ctx = TemplateContext(where partials' = partials)
-    let template = Template.parse(
-      "{{ extends \"base\" }}" +
-      "{{ block content }}page{{ end }}",
-      ctx)?
+    let template =
+      Template.parse(
+"{{ extends \"base\" }}" +
+"{{ block content }}page{{ end }}",
+ctx)?
     h.assert_eq[String]("[NAV]page", template.render(TemplateValues)?)
-
 
 class \nodoc\ iso _TestRenderInheritanceBlockWithVariables is UnitTest
   fun name(): String => "Render: block overrides using template variables"
 
-  fun apply(h: TestHelper)? =>
-    let partials = recover val
+  fun apply(h: TestHelper) ? =>
+    let partials =
+      recover val
       let m = Map[String, String]
       m("base") =
         "<title>{{ block title }}Default{{ end }}</title>"
       m
     end
     let ctx = TemplateContext(where partials' = partials)
-    let template = Template.parse(
-      "{{ extends \"base\" }}" +
-      "{{ block title }}{{ page_title }}{{ end }}",
-      ctx)?
+    let template =
+      Template.parse(
+"{{ extends \"base\" }}" +
+"{{ block title }}{{ page_title }}{{ end }}",
+ctx)?
     let values = TemplateValues
     values("page_title") = "My Page"
     h.assert_eq[String]("<title>My Page</title>", template.render(values)?)
-
 
 class \nodoc\ iso _TestRenderBlocksWithoutExtends is UnitTest
   fun name(): String =>
     "Render: standalone template with blocks renders defaults"
 
-  fun apply(h: TestHelper)? =>
-    let template = Template.parse(
-      "before{{ block slot }}DEFAULT{{ end }}after")?
+  fun apply(h: TestHelper) ? =>
+    let template =
+      Template.parse(
+"before{{ block slot }}DEFAULT{{ end }}after")?
     h.assert_eq[String](
       "beforeDEFAULTafter", template.render(TemplateValues)?)
-
-
-// ---------------------------------------------------------------------------
-// Default value render tests (using pipe syntax)
-// ---------------------------------------------------------------------------
 
 class \nodoc\ iso _PropDefaultWhenMissing
   is Property1[(String, String)]
@@ -2773,7 +2677,6 @@ class \nodoc\ iso _PropDefaultWhenMissing
       "{{ " + n + " | default(\"" + default_val + "\") }}"
     let template = Template.parse(source)?
     h.assert_eq[String](default_val, template.render(TemplateValues)?)
-
 
 class \nodoc\ iso _PropDefaultWhenPresent
   is Property1[(String, String, String)]
@@ -2802,11 +2705,10 @@ class \nodoc\ iso _PropDefaultWhenPresent
     values(n) = actual_val
     h.assert_eq[String](actual_val, template.render(values)?)
 
-
 class \nodoc\ iso _TestRenderDefaultBasic is UnitTest
   fun name(): String => "Render: default value basic cases"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     // Variable present → actual value, default ignored
     let t1 = Template.parse("{{ name | default(\"fallback\") }}")?
     let v1 = TemplateValues
@@ -2820,14 +2722,14 @@ class \nodoc\ iso _TestRenderDefaultBasic is UnitTest
     let t2 = Template.parse("{{ name | default(\"\") }}")?
     h.assert_eq[String]("", t2.render(TemplateValues)?)
 
-
 class \nodoc\ iso _TestRenderDefaultWithDottedProp is UnitTest
   fun name(): String =>
     "Render: default value with dotted property"
 
-  fun apply(h: TestHelper)? =>
-    let template = Template.parse(
-      "{{ user.name | default(\"anon\") }}")?
+  fun apply(h: TestHelper) ? =>
+    let template =
+      Template.parse(
+"{{ user.name | default(\"anon\") }}")?
 
     // Dotted prop present → actual value
     let v1 = TemplateValues
@@ -2844,35 +2746,36 @@ class \nodoc\ iso _TestRenderDefaultWithDottedProp is UnitTest
     v2("user") = TemplateValue("u")
     h.assert_eq[String]("anon", template.render(v2)?)
 
-
 class \nodoc\ iso _TestRenderDefaultInsideLoop is UnitTest
   fun name(): String => "Render: default value inside loop body"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     let values = TemplateValues
 
     let item1_props = Map[String, TemplateValue]
     item1_props("label") = TemplateValue("tagged")
     let item2_props = Map[String, TemplateValue]
 
-    values("items") = TemplateValue(
-      [TemplateValue("A", item1_props)
-       TemplateValue("B", item2_props)])
+    values("items") =
+      TemplateValue(
+        [ TemplateValue("A", item1_props)
+          TemplateValue("B", item2_props)])
 
-    let template = Template.parse(
-      "{{ for x in items }}" +
-      "{{ x.label | default(\"none\") }}," +
-      "{{ end }}")?
+    let template =
+      Template.parse(
+"{{ for x in items }}" +
+"{{ x.label | default(\"none\") }}," +
+"{{ end }}")?
     h.assert_eq[String]("tagged,none,", template.render(values)?)
-
 
 class \nodoc\ iso _TestRenderDefaultInsideIf is UnitTest
   fun name(): String =>
     "Render: default value in body of conditional"
 
-  fun apply(h: TestHelper)? =>
-    let template = Template.parse(
-      "{{ if show }}{{ title | default(\"Untitled\") }}{{ end }}")?
+  fun apply(h: TestHelper) ? =>
+    let template =
+      Template.parse(
+"{{ if show }}{{ title | default(\"Untitled\") }}{{ end }}")?
 
     // show present, title present
     let v1 = TemplateValues
@@ -2888,7 +2791,6 @@ class \nodoc\ iso _TestRenderDefaultInsideIf is UnitTest
     // show absent → body not rendered at all
     h.assert_eq[String]("", template.render(TemplateValues)?)
 
-
 class \nodoc\ iso _TestRenderDefaultWithBraces is UnitTest
   fun name(): String =>
     "Render: default value containing braces"
@@ -2896,178 +2798,182 @@ class \nodoc\ iso _TestRenderDefaultWithBraces is UnitTest
   fun apply(h: TestHelper) ? =>
     let values = TemplateValues
 
-    h.assert_eq[String]("a}b",
+    h.assert_eq[String](
+      "a}b",
       Template.parse("{{ x | default(\"a}b\") }}")?.render(values)?)
-    h.assert_eq[String]("a}}b",
+    h.assert_eq[String](
+      "a}}b",
       Template.parse("{{ x | default(\"a}}b\") }}")?.render(values)?)
-    h.assert_eq[String]("a{b",
+    h.assert_eq[String](
+      "a{b",
       Template.parse("{{ x | default(\"a{b\") }}")?.render(values)?)
-    h.assert_eq[String]("a{{b",
+    h.assert_eq[String](
+      "a{{b",
       Template.parse("{{ x | default(\"a{{b\") }}")?.render(values)?)
-
-
-// ---------------------------------------------------------------------------
-// Trim syntax tests
-// ---------------------------------------------------------------------------
 
 class \nodoc\ iso _TestTrimLeftOnly is UnitTest
   fun name(): String => "Trim: left trim strips trailing whitespace"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     let values = TemplateValues
     values("x") = "world"
     // {{- strips trailing whitespace (spaces) from preceding literal
-    h.assert_eq[String]("helloworld",
+    h.assert_eq[String](
+      "helloworld",
       Template.parse("hello   {{- x }}")?.render(values)?)
     // Strips newlines and tabs too
-    h.assert_eq[String]("helloworld",
+    h.assert_eq[String](
+      "helloworld",
       Template.parse("hello\n\t {{- x }}")?.render(values)?)
-
 
 class \nodoc\ iso _TestTrimRightOnly is UnitTest
   fun name(): String => "Trim: right trim strips leading whitespace"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     let values = TemplateValues
     values("x") = "hello"
     // -}} strips leading whitespace from following literal
-    h.assert_eq[String]("helloworld",
+    h.assert_eq[String](
+      "helloworld",
       Template.parse("{{ x -}}   world")?.render(values)?)
     // Strips newlines and tabs too
-    h.assert_eq[String]("helloworld",
+    h.assert_eq[String](
+      "helloworld",
       Template.parse("{{ x -}}\n\t world")?.render(values)?)
-
 
 class \nodoc\ iso _TestTrimBoth is UnitTest
   fun name(): String => "Trim: both trims on same tag"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     let values = TemplateValues
     values("x") = "middle"
-    h.assert_eq[String]("leftmiddleright",
+    h.assert_eq[String](
+      "leftmiddleright",
       Template.parse("left   {{- x -}}   right")?.render(values)?)
-
 
 class \nodoc\ iso _TestTrimWithIf is UnitTest
   fun name(): String => "Trim: with if/end blocks"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     let values = TemplateValues
     values("show") = "yes"
     // Trim around if/end strips all adjacent whitespace
-    h.assert_eq[String]("beforecontentafter",
+    h.assert_eq[String](
+      "beforecontentafter",
       Template.parse(
         "before\n{{- if show -}}\ncontent\n{{- end -}}\nafter")?
         .render(values)?)
     // Selective trim: only right-trim on if, only left-trim on end
     // keeps content whitespace intact
-    h.assert_eq[String]("before\ncontent\nafter",
+    h.assert_eq[String](
+      "before\ncontent\nafter",
       Template.parse(
         "before\n{{ if show -}}\ncontent\n{{- end }}\nafter")?
         .render(values)?)
 
-
 class \nodoc\ iso _TestTrimWithFor is UnitTest
   fun name(): String => "Trim: with for loop"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     let values = TemplateValues
-    values("items") = TemplateValue(
-      recover val
-        let s = Array[TemplateValue]
-        s.push(TemplateValue("a"))
-        s.push(TemplateValue("b"))
-        s.push(TemplateValue("c"))
-        s
-      end)
+    values("items") =
+      TemplateValue(
+        recover val
+          Array[TemplateValue]
+            .> push(TemplateValue("a"))
+            .> push(TemplateValue("b"))
+            .> push(TemplateValue("c"))
+        end)
     // Right-trim on for and left-trim on end to avoid blank lines
     // around loop body. Each iteration produces "- <item>\n".
-    h.assert_eq[String]("items:\n- a\n- b\n- c\n",
+    h.assert_eq[String](
+      "items:\n- a\n- b\n- c\n",
       Template.parse(
         "items:\n{{ for item in items -}}\n- {{ item }}\n{{ end }}")?
         .render(values)?)
 
-
 class \nodoc\ iso _TestTrimWithInclude is UnitTest
   fun name(): String => "Trim: with include"
 
-  fun apply(h: TestHelper)? =>
-    let ctx = TemplateContext(where partials' =
-      recover val
-        let p = Map[String, String]
-        p("part") = "included"
-        p
-      end)
-    h.assert_eq[String]("beforeincludedafter",
+  fun apply(h: TestHelper) ? =>
+    let ctx =
+      TemplateContext(where partials' =
+recover val
+let p = Map[String, String]
+p("part") = "included"
+p
+end)
+    h.assert_eq[String](
+      "beforeincludedafter",
       Template.parse(
         "before   {{- include \"part\" -}}   after", ctx)?
         .render(TemplateValues)?)
 
-
 class \nodoc\ iso _TestTrimWithExtends is UnitTest
   fun name(): String => "Trim: extends with trim markers"
 
-  fun apply(h: TestHelper)? =>
-    let ctx = TemplateContext(where partials' =
-      recover val
-        let p = Map[String, String]
-        p("base") = "hello {{ block content }}default{{ end }}"
-        p
-      end)
+  fun apply(h: TestHelper) ? =>
+    let ctx =
+      TemplateContext(where partials' =
+recover val
+let p = Map[String, String]
+p("base") = "hello {{ block content }}default{{ end }}"
+p
+end)
     // Trim markers on extends should parse correctly
-    let template = Template.parse(
-      "{{- extends \"base\" -}}" +
-      "{{ block content }}world{{ end }}", ctx)?
+    let template =
+      Template.parse(
+"{{- extends \"base\" -}}" +
+"{{ block content }}world{{ end }}", ctx)?
     let values = TemplateValues
     h.assert_eq[String]("hello world", template.render(values)?)
-
 
 class \nodoc\ iso _TestTrimAdjacentTags is UnitTest
   fun name(): String => "Trim: adjacent tags with no literal between"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     let values = TemplateValues
     values("a") = "one"
     values("b") = "two"
     // -}} on first tag should strip leading whitespace from text after
     // second tag, even though there's no literal between the two tags
-    h.assert_eq[String]("onetwotext",
+    h.assert_eq[String](
+      "onetwotext",
       Template.parse("{{ a -}}{{ b -}}   text")?.render(values)?)
-
 
 class \nodoc\ iso _TestTrimAtStart is UnitTest
   fun name(): String => "Trim: left trim at start of template"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     let values = TemplateValues
     values("x") = "hello"
     // {{- at very start — no preceding literal to strip
-    h.assert_eq[String]("hello",
+    h.assert_eq[String](
+      "hello",
       Template.parse("{{- x }}")?.render(values)?)
-
 
 class \nodoc\ iso _TestTrimAtEnd is UnitTest
   fun name(): String => "Trim: right trim at end of template"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     let values = TemplateValues
     values("x") = "hello"
     // -}} at very end — no following literal to strip
-    h.assert_eq[String]("hello",
+    h.assert_eq[String](
+      "hello",
       Template.parse("{{ x -}}")?.render(values)?)
-
 
 class \nodoc\ iso _TestTrimProducesEmptyLiteral is UnitTest
   fun name(): String => "Trim: trimming produces empty literal (skipped)"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     let values = TemplateValues
     values("a") = "one"
     values("b") = "two"
     // The spaces between tags get fully trimmed away
-    h.assert_eq[String]("onetwo",
+    h.assert_eq[String](
+      "onetwo",
       Template.parse("{{ a -}}   {{- b }}")?.render(values)?)
-
 
 class \nodoc\ iso _PropTrimDeterminism is Property1[String]
   """
@@ -3078,7 +2984,7 @@ class \nodoc\ iso _PropTrimDeterminism is Property1[String]
   fun gen(): Generator[String] =>
     _Generators.valid_name()
 
-  fun property(name': String, h: PropertyHelper)? =>
+  fun property(name': String, h: PropertyHelper) ? =>
     let source: String val = "  {{- " + name' + " -}}  "
     let template = Template.parse(source)?
     let values = TemplateValues
@@ -3087,51 +2993,46 @@ class \nodoc\ iso _PropTrimDeterminism is Property1[String]
     let r2 = template.render(values)?
     h.assert_eq[String](r1, r2)
 
-
-// ---------------------------------------------------------------------------
-// String literal pipe source tests
-// ---------------------------------------------------------------------------
-
 class \nodoc\ iso _TestRenderPipeLiteralSource is UnitTest
   fun name(): String => "Render: string literal pipe source"
 
-  fun apply(h: TestHelper)? =>
-    h.assert_eq[String]("HELLO",
+  fun apply(h: TestHelper) ? =>
+    h.assert_eq[String](
+      "HELLO",
       Template.parse("{{ \"hello\" | upper }}")?.render(TemplateValues)?)
-
 
 class \nodoc\ iso _TestRenderPipeLiteralChain is UnitTest
   fun name(): String => "Render: string literal pipe chain"
 
-  fun apply(h: TestHelper)? =>
-    h.assert_eq[String]("HELLO",
+  fun apply(h: TestHelper) ? =>
+    h.assert_eq[String](
+      "HELLO",
       Template.parse("{{ \"  hello  \" | trim | upper }}")?
         .render(TemplateValues)?)
-
 
 class \nodoc\ iso _TestRenderPipeLiteralDefault is UnitTest
   fun name(): String => "Render: string literal pipe default"
 
-  fun apply(h: TestHelper)? =>
-    h.assert_eq[String]("fallback",
+  fun apply(h: TestHelper) ? =>
+    h.assert_eq[String](
+      "fallback",
       Template.parse("{{ \"\" | default(\"fallback\") }}")?
         .render(TemplateValues)?)
-
 
 class \nodoc\ iso _TestRenderPipeLiteralReplace is UnitTest
   fun name(): String => "Render: string literal pipe replace"
 
-  fun apply(h: TestHelper)? =>
-    h.assert_eq[String]("hello pony",
+  fun apply(h: TestHelper) ? =>
+    h.assert_eq[String](
+      "hello pony",
       Template.parse(
         "{{ \"hello world\" | replace(\"world\", \"pony\") }}")?
         .render(TemplateValues)?)
 
-
 class \nodoc\ iso _TestParserPipeLiteralSource is UnitTest
   fun name(): String => "Parser: pipe literal source is String"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     match _StmtParser.parse("\"hello\" | upper")?
     | let pipe: _PipeNode =>
       match pipe.source
@@ -3143,7 +3044,6 @@ class \nodoc\ iso _TestParserPipeLiteralSource is UnitTest
       h.assert_eq[String]("upper", pipe.filters(0)?.name)
     else h.fail("expected _PipeNode"); error
     end
-
 
 class \nodoc\ iso _PropPipeLiteralUpper is Property1[String]
   """
@@ -3157,17 +3057,13 @@ class \nodoc\ iso _PropPipeLiteralUpper is Property1[String]
     // string_char rule in the parser grammar.
     _Generators.pipe_source_string()
 
-  fun property(sample: String, h: PropertyHelper)? =>
-    let source = recover val
+  fun property(sample: String, h: PropertyHelper) ? =>
+    let source =
+      recover val
       "{{ \"" + sample + "\" | upper }}"
     end
     let result = Template.parse(source)?.render(TemplateValues)?
     h.assert_eq[String](sample.upper(), result)
-
-
-// ---------------------------------------------------------------------------
-// Comment tests
-// ---------------------------------------------------------------------------
 
 class \nodoc\ iso _PropCommentInvisible is Property1[String]
   """
@@ -3178,11 +3074,11 @@ class \nodoc\ iso _PropCommentInvisible is Property1[String]
   fun gen(): Generator[String] =>
     _Generators.comment_body()
 
-  fun property(sample: String, h: PropertyHelper)? =>
+  fun property(sample: String, h: PropertyHelper) ? =>
     let source = recover val "{{!" + sample + "}}" end
-    h.assert_eq[String]("",
+    h.assert_eq[String](
+      "",
       Template.parse(source)?.render(TemplateValues)?)
-
 
 class \nodoc\ iso _PropCommentBodyIrrelevant
   is Property1[(String, String)]
@@ -3197,7 +3093,7 @@ class \nodoc\ iso _PropCommentBodyIrrelevant
       _Generators.comment_body(),
       _Generators.comment_body())
 
-  fun property(sample: (String, String), h: PropertyHelper)? =>
+  fun property(sample: (String, String), h: PropertyHelper) ? =>
     (let body1, let body2) = sample
     let source1 = recover val "before{{!" + body1 + "}}after" end
     let source2 = recover val "before{{!" + body2 + "}}after" end
@@ -3205,158 +3101,165 @@ class \nodoc\ iso _PropCommentBodyIrrelevant
     let r2 = Template.parse(source2)?.render(TemplateValues)?
     h.assert_eq[String](r1, r2)
 
-
 class \nodoc\ iso _TestCommentBasic is UnitTest
   fun name(): String => "Comment: basic comment is invisible"
 
-  fun apply(h: TestHelper)? =>
-    h.assert_eq[String]("hello  world",
+  fun apply(h: TestHelper) ? =>
+    h.assert_eq[String](
+      "hello  world",
       Template.parse("hello {{! ignored }} world")?.render(TemplateValues)?)
-
 
 class \nodoc\ iso _TestCommentWithTrim is UnitTest
   fun name(): String => "Comment: trim markers with comments"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     // Right-trim strips leading whitespace from following literal
-    h.assert_eq[String]("helloworld",
+    h.assert_eq[String](
+      "helloworld",
       Template.parse("hello{{! comment -}}   world")?
         .render(TemplateValues)?)
     // Left-trim strips trailing whitespace from preceding literal
-    h.assert_eq[String]("helloworld",
+    h.assert_eq[String](
+      "helloworld",
       Template.parse("hello   {{-! comment }}world")?
         .render(TemplateValues)?)
     // Both trims
-    h.assert_eq[String]("helloworld",
+    h.assert_eq[String](
+      "helloworld",
       Template.parse("hello   {{-! comment -}}   world")?
         .render(TemplateValues)?)
-
 
 class \nodoc\ iso _TestCommentBeforeExtends is UnitTest
   fun name(): String => "Comment: comment before extends is transparent"
 
-  fun apply(h: TestHelper)? =>
-    let partials = recover val
+  fun apply(h: TestHelper) ? =>
+    let partials =
+      recover val
       let p = Map[String, String]
       p("base") = "BASE:{{ block main }}default{{ end }}"
       p
     end
     let ctx = TemplateContext(where partials' = partials)
     // Comment before extends — should work fine
-    let child = "{{! layout comment }}{{ extends \"base\" }}{{ block main }}override{{ end }}"
-    h.assert_eq[String]("BASE:override",
-      Template.parse(child, ctx)?.render(TemplateValues)?)
+    let child =
+      "{{! layout comment }}" +
+      "{{ extends \"base\" }}" +
+      "{{ block main }}override{{ end }}"
+    h.assert_eq[String](
+      "BASE:override",
+      Template.parse(consume child, ctx)?.render(TemplateValues)?)
     // Extends after a non-comment block should still fail
-    h.assert_error({()? =>
+    h.assert_error({() ? =>
       Template.parse(
         "{{ x }}{{ extends \"base\" }}{{ block main }}override{{ end }}",
         ctx)?
     })
 
-
 class \nodoc\ iso _TestCommentInsideIf is UnitTest
   fun name(): String => "Comment: inside if body"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     let values = TemplateValues
     values("show") = "yes"
-    h.assert_eq[String]("visible",
+    h.assert_eq[String](
+      "visible",
       Template.parse("{{ if show }}{{! hidden note }}visible{{ end }}")?
         .render(values)?)
-
 
 class \nodoc\ iso _TestCommentInsideLoop is UnitTest
   fun name(): String => "Comment: inside loop body"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     let values = TemplateValues
-    values("items") = TemplateValue(
-      [TemplateValue("a"); TemplateValue("b")])
-    h.assert_eq[String]("ab",
+    values("items") =
+      TemplateValue(
+        [TemplateValue("a"); TemplateValue("b")])
+    h.assert_eq[String](
+      "ab",
       Template.parse(
         "{{ for x in items }}{{! loop comment }}{{ x }}{{ end }}")?
         .render(values)?)
 
-
 class \nodoc\ iso _TestCommentInsideElse is UnitTest
   fun name(): String => "Comment: inside else branch"
 
-  fun apply(h: TestHelper)? =>
-    h.assert_eq[String]("fallback",
+  fun apply(h: TestHelper) ? =>
+    h.assert_eq[String](
+      "fallback",
       Template.parse(
         "{{ if missing }}yes{{ else }}{{! else comment }}fallback{{ end }}")?
         .render(TemplateValues)?)
 
-
 class \nodoc\ iso _TestCommentAsOnlyBlockContent is UnitTest
   fun name(): String => "Comment: as sole content of if/loop body"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     let values = TemplateValues
     values("show") = "yes"
     // Comment as only content of if body produces empty body
-    h.assert_eq[String]("",
+    h.assert_eq[String](
+      "",
       Template.parse("{{ if show }}{{! only a comment }}{{ end }}")?
         .render(values)?)
     // Comment as only content of loop body
-    values("items") = TemplateValue(
-      [TemplateValue("a"); TemplateValue("b")])
-    h.assert_eq[String]("",
+    values("items") =
+      TemplateValue(
+        [TemplateValue("a"); TemplateValue("b")])
+    h.assert_eq[String](
+      "",
       Template.parse(
         "{{ for x in items }}{{! only a comment }}{{ end }}")?
         .render(values)?)
 
-
 class \nodoc\ iso _TestCommentAdjacent is UnitTest
   fun name(): String => "Comment: multiple adjacent comments"
 
-  fun apply(h: TestHelper)? =>
-    h.assert_eq[String]("ab",
+  fun apply(h: TestHelper) ? =>
+    h.assert_eq[String](
+      "ab",
       Template.parse("a{{! one }}{{! two }}{{! three }}b")?
         .render(TemplateValues)?)
-
 
 class \nodoc\ iso _TestCommentBetweenLiterals is UnitTest
   fun name(): String => "Comment: between literals produces concatenation"
 
-  fun apply(h: TestHelper)? =>
-    h.assert_eq[String]("ab",
+  fun apply(h: TestHelper) ? =>
+    h.assert_eq[String](
+      "ab",
       Template.parse("a{{! comment }}b")?.render(TemplateValues)?)
-
 
 class \nodoc\ iso _TestCommentMinimal is UnitTest
   fun name(): String => "Comment: minimal forms"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     // Just the exclamation mark, no body
-    h.assert_eq[String]("",
+    h.assert_eq[String](
+      "",
       Template.parse("{{!}}")?.render(TemplateValues)?)
     // Exclamation mark with whitespace
-    h.assert_eq[String]("",
+    h.assert_eq[String](
+      "",
       Template.parse("{{! }}")?.render(TemplateValues)?)
-
 
 class \nodoc\ iso _TestCommentWithQuotes is UnitTest
   fun name(): String => "Comment: double quotes inside comment body"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     // A " inside a comment must not trigger quote-aware delimiter scanning
-    h.assert_eq[String]("ab",
+    h.assert_eq[String](
+      "ab",
       Template.parse("a{{! she said \"hello\" }}b")?
         .render(TemplateValues)?)
     // Single unmatched quote
-    h.assert_eq[String]("ab",
+    h.assert_eq[String](
+      "ab",
       Template.parse("a{{! it's a \" quote }}b")?
         .render(TemplateValues)?)
     // Single } inside comment (legal — only }} closes)
-    h.assert_eq[String]("ab",
+    h.assert_eq[String](
+      "ab",
       Template.parse("a{{! single } brace }}b")?
         .render(TemplateValues)?)
-
-
-// ---------------------------------------------------------------------------
-// Raw block tests
-// ---------------------------------------------------------------------------
 
 class \nodoc\ iso _PropRawBlockContentIdentity is Property1[String]
   """
@@ -3367,11 +3270,11 @@ class \nodoc\ iso _PropRawBlockContentIdentity is Property1[String]
   fun gen(): Generator[String] =>
     _Generators.raw_body()
 
-  fun property(sample: String, h: PropertyHelper)? =>
+  fun property(sample: String, h: PropertyHelper) ? =>
     let source = recover val "{{raw}}" + sample + "{{end}}" end
-    h.assert_eq[String](sample,
+    h.assert_eq[String](
+      sample,
       Template.parse(source)?.render(TemplateValues)?)
-
 
 class \nodoc\ iso _PropRawBlockSurroundingLiteralsPreserved
   is Property1[String]
@@ -3383,110 +3286,118 @@ class \nodoc\ iso _PropRawBlockSurroundingLiteralsPreserved
   fun gen(): Generator[String] =>
     _Generators.raw_body()
 
-  fun property(sample: String, h: PropertyHelper)? =>
+  fun property(sample: String, h: PropertyHelper) ? =>
     let source = recover val "before{{raw}}" + sample + "{{end}}after" end
     let expected = recover val "before" + sample + "after" end
-    h.assert_eq[String](expected,
+    h.assert_eq[String](
+      expected,
       Template.parse(source)?.render(TemplateValues)?)
-
 
 class \nodoc\ iso _TestRawBasic is UnitTest
   fun name(): String => "Raw: basic raw block passes through delimiters"
 
-  fun apply(h: TestHelper)? =>
-    h.assert_eq[String]("{{ name }}",
+  fun apply(h: TestHelper) ? =>
+    h.assert_eq[String](
+      "{{ name }}",
       Template.parse("{{raw}}{{ name }}{{end}}")?
         .render(TemplateValues)?)
-
 
 class \nodoc\ iso _TestRawWithTrim is UnitTest
   fun name(): String => "Raw: trim markers on raw/end tags"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     // External trim: left-trim on raw strips preceding whitespace
-    h.assert_eq[String]("beforecontent after",
+    h.assert_eq[String](
+      "beforecontent after",
       Template.parse("before   {{- raw }}content{{end}} after")?
         .render(TemplateValues)?)
     // External trim: right-trim on end strips following whitespace
-    h.assert_eq[String]("before contentafter",
+    h.assert_eq[String](
+      "before contentafter",
       Template.parse("before {{raw}}content{{end -}}   after")?
         .render(TemplateValues)?)
     // Internal trim: right-trim on raw lstrips content
-    h.assert_eq[String]("content",
+    h.assert_eq[String](
+      "content",
       Template.parse("{{raw -}}   content{{end}}")?
         .render(TemplateValues)?)
     // Internal trim: left-trim on end rstrips content
-    h.assert_eq[String]("content",
+    h.assert_eq[String](
+      "content",
       Template.parse("{{raw}}content   {{- end}}")?
         .render(TemplateValues)?)
     // Both internal trims
-    h.assert_eq[String]("content",
+    h.assert_eq[String](
+      "content",
       Template.parse("{{raw -}}   content   {{- end}}")?
         .render(TemplateValues)?)
     // All four trims
-    h.assert_eq[String]("content",
+    h.assert_eq[String](
+      "content",
       Template.parse("   {{- raw -}}   content   {{- end -}}   ")?
         .render(TemplateValues)?)
-
 
 class \nodoc\ iso _TestRawWithTemplateDelimiters is UnitTest
   fun name(): String => "Raw: template syntax passes through literally"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     // Note: {{ end }} cannot appear inside raw content because it closes the
     // raw block. Other template syntax passes through fine.
-    h.assert_eq[String]("{{ if flag }}yes{{ else }}no",
+    h.assert_eq[String](
+      "{{ if flag }}yes{{ else }}no",
       Template.parse(
         "{{raw}}{{ if flag }}yes{{ else }}no{{end}}")?
         .render(TemplateValues)?)
 
-
 class \nodoc\ iso _TestRawInsideIf is UnitTest
   fun name(): String => "Raw: raw block inside if body"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     let values = TemplateValues
     values("show") = "yes"
-    h.assert_eq[String]("{{ x }}",
+    h.assert_eq[String](
+      "{{ x }}",
       Template.parse(
         "{{ if show }}{{raw}}{{ x }}{{end}}{{ end }}")?
         .render(values)?)
     // When condition is false, raw content not rendered
-    h.assert_eq[String]("",
+    h.assert_eq[String](
+      "",
       Template.parse(
         "{{ if show }}{{raw}}{{ x }}{{end}}{{ end }}")?
         .render(TemplateValues)?)
 
-
 class \nodoc\ iso _TestRawInsideLoop is UnitTest
   fun name(): String => "Raw: raw block inside loop body"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     let values = TemplateValues
-    values("items") = TemplateValue(
-      [TemplateValue("a"); TemplateValue("b")])
-    h.assert_eq[String]("{{ x }}{{ x }}",
+    values("items") =
+      TemplateValue(
+        [TemplateValue("a"); TemplateValue("b")])
+    h.assert_eq[String](
+      "{{ x }}{{ x }}",
       Template.parse(
         "{{ for item in items }}{{raw}}{{ x }}{{end}}{{ end }}")?
         .render(values)?)
 
-
 class \nodoc\ iso _TestRawInsideElse is UnitTest
   fun name(): String => "Raw: raw block inside else branch"
 
-  fun apply(h: TestHelper)? =>
-    h.assert_eq[String]("{{ fallback }}",
+  fun apply(h: TestHelper) ? =>
+    h.assert_eq[String](
+      "{{ fallback }}",
       Template.parse(
         "{{ if missing }}yes{{ else }}{{raw}}{{ fallback }}{{end}}{{ end }}")?
         .render(TemplateValues)?)
-
 
 class \nodoc\ iso _TestRawBeforeExtends is UnitTest
   fun name(): String => "Raw: raw block before extends prevents extends"
 
   fun apply(h: TestHelper) =>
-    h.assert_error({()? =>
-      let partials = recover val
+    h.assert_error({() ? =>
+      let partials =
+        recover val
         let m = Map[String, String]
         m("base") = "base content"
         m
@@ -3496,87 +3407,85 @@ class \nodoc\ iso _TestRawBeforeExtends is UnitTest
         "{{raw}}literal{{end}}{{ extends \"base\" }}", ctx)?
     })
 
-
 class \nodoc\ iso _TestRawAdjacent is UnitTest
   fun name(): String => "Raw: multiple adjacent raw blocks"
 
-  fun apply(h: TestHelper)? =>
-    h.assert_eq[String]("{{ a }}{{ b }}",
+  fun apply(h: TestHelper) ? =>
+    h.assert_eq[String](
+      "{{ a }}{{ b }}",
       Template.parse(
         "{{raw}}{{ a }}{{end}}{{raw}}{{ b }}{{end}}")?
         .render(TemplateValues)?)
 
-
 class \nodoc\ iso _TestRawBetweenLiterals is UnitTest
   fun name(): String => "Raw: raw block between regular literals"
 
-  fun apply(h: TestHelper)? =>
-    h.assert_eq[String]("before{{ x }}after",
+  fun apply(h: TestHelper) ? =>
+    h.assert_eq[String](
+      "before{{ x }}after",
       Template.parse("before{{raw}}{{ x }}{{end}}after")?
         .render(TemplateValues)?)
-
 
 class \nodoc\ iso _TestRawEmpty is UnitTest
   fun name(): String => "Raw: empty raw block"
 
-  fun apply(h: TestHelper)? =>
-    h.assert_eq[String]("beforeafter",
+  fun apply(h: TestHelper) ? =>
+    h.assert_eq[String](
+      "beforeafter",
       Template.parse("before{{raw}}{{end}}after")?
         .render(TemplateValues)?)
-
 
 class \nodoc\ iso _TestRawUnclosed is UnitTest
   fun name(): String => "Raw: unclosed raw block is a parse error"
 
   fun apply(h: TestHelper) =>
-    h.assert_error({()? =>
+    h.assert_error({() ? =>
       Template.parse("{{raw}}content without end")?
     })
     // Missing end entirely
-    h.assert_error({()? =>
+    h.assert_error({() ? =>
       Template.parse("{{raw}}{{ stuff }}")?
     })
-
 
 class \nodoc\ iso _TestRawMinimal is UnitTest
   fun name(): String => "Raw: minimal forms with and without whitespace"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     // No whitespace
-    h.assert_eq[String]("x",
+    h.assert_eq[String](
+      "x",
       Template.parse("{{raw}}x{{end}}")?.render(TemplateValues)?)
     // Whitespace in tags
-    h.assert_eq[String]("x",
+    h.assert_eq[String](
+      "x",
       Template.parse("{{ raw }}x{{ end }}")?.render(TemplateValues)?)
     // Whitespace in raw tag only
-    h.assert_eq[String]("x",
+    h.assert_eq[String](
+      "x",
       Template.parse("{{ raw }}x{{end}}")?.render(TemplateValues)?)
-
 
 class \nodoc\ iso _TestRawWithBraces is UnitTest
   fun name(): String => "Raw: content with single braces and non-end blocks"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     // Single braces pass through
-    h.assert_eq[String]("a{b}c",
+    h.assert_eq[String](
+      "a{b}c",
       Template.parse("{{raw}}a{b}c{{end}}")?.render(TemplateValues)?)
     // Non-end {{ }} blocks inside raw are literal
-    h.assert_eq[String]("{{ if x }}",
+    h.assert_eq[String](
+      "{{ if x }}",
       Template.parse("{{raw}}{{ if x }}{{end}}")?.render(TemplateValues)?)
     // {{ for ... }} inside raw is literal
-    h.assert_eq[String]("{{ for i in items }}{{ i }}",
+    h.assert_eq[String](
+      "{{ for i in items }}{{ i }}",
       Template.parse("{{raw}}{{ for i in items }}{{ i }}{{end}}")?
         .render(TemplateValues)?)
-
-
-// ---------------------------------------------------------------------------
-// from_file test (Step 8)
-// ---------------------------------------------------------------------------
 
 class \nodoc\ iso _TestFromFile is UnitTest
   fun name(): String => "Template from_file"
 
-  fun apply(h: TestHelper)? =>
+  fun apply(h: TestHelper) ? =>
     let auth = FileAuth(h.env.root)
 
     // Parse fixture file
@@ -3588,186 +3497,183 @@ class \nodoc\ iso _TestFromFile is UnitTest
 
     // Non-existent file errors
     h.assert_error({() ? =>
-      let bad_path = FilePath(FileAuth(h.env.root),
-        "templates/_nonexistent.txt")
+      let bad_path =
+        FilePath(
+          FileAuth(h.env.root),
+"templates/_nonexistent.txt")
       Template.from_file(bad_path)?
     })
 
-
-// ---------------------------------------------------------------------------
-// HTML context state machine tests
-// ---------------------------------------------------------------------------
-
 class \nodoc\ iso _TestContextText is UnitTest
-  fun name(): String => "HtmlContext: text is default state"
+  fun name(): String => "HTMLContext: text is default state"
 
   fun apply(h: TestHelper) =>
-    let t = _HtmlContextTracker
-    h.assert_is[HtmlContext](CtxText, t.context())
+    let t = _HTMLContextTracker
+    h.assert_is[HTMLContext](CtxText, t.context())
     t.feed("hello world")
-    h.assert_is[HtmlContext](CtxText, t.context())
+    h.assert_is[HTMLContext](CtxText, t.context())
 
 class \nodoc\ iso _TestContextTag is UnitTest
-  fun name(): String => "HtmlContext: inside tag is error"
+  fun name(): String => "HTMLContext: inside tag is error"
 
   fun apply(h: TestHelper) =>
-    let t = _HtmlContextTracker
+    let t = _HTMLContextTracker
     t.feed("<div")
-    h.assert_is[HtmlContext](CtxError, t.context())
+    h.assert_is[HTMLContext](CtxError, t.context())
 
 class \nodoc\ iso _TestContextAttrDq is UnitTest
-  fun name(): String => "HtmlContext: double-quoted attr value"
+  fun name(): String => "HTMLContext: double-quoted attr value"
 
   fun apply(h: TestHelper) =>
-    let t = _HtmlContextTracker
+    let t = _HTMLContextTracker
     t.feed("<div class=\"")
-    h.assert_is[HtmlContext](CtxHtmlAttr, t.context())
+    h.assert_is[HTMLContext](CtxHTMLAttr, t.context())
     t.feed("foo\"")
     // After closing quote, back in tag
-    h.assert_is[HtmlContext](CtxError, t.context())
+    h.assert_is[HTMLContext](CtxError, t.context())
 
 class \nodoc\ iso _TestContextAttrSq is UnitTest
-  fun name(): String => "HtmlContext: single-quoted attr value"
+  fun name(): String => "HTMLContext: single-quoted attr value"
 
   fun apply(h: TestHelper) =>
-    let t = _HtmlContextTracker
+    let t = _HTMLContextTracker
     t.feed("<div class='")
-    h.assert_is[HtmlContext](CtxHtmlAttr, t.context())
+    h.assert_is[HTMLContext](CtxHTMLAttr, t.context())
 
 class \nodoc\ iso _TestContextUnqAttrError is UnitTest
-  fun name(): String => "HtmlContext: unquoted attr value is error"
+  fun name(): String => "HTMLContext: unquoted attr value is error"
 
   fun apply(h: TestHelper) =>
-    let t = _HtmlContextTracker
+    let t = _HTMLContextTracker
     t.feed("<div class=")
     // Before attr val, still error
-    h.assert_is[HtmlContext](CtxError, t.context())
+    h.assert_is[HTMLContext](CtxError, t.context())
     t.feed("x")
     // In unquoted attr val — error context
-    h.assert_is[HtmlContext](CtxError, t.context())
+    h.assert_is[HTMLContext](CtxError, t.context())
 
 class \nodoc\ iso _TestContextComment is UnitTest
-  fun name(): String => "HtmlContext: HTML comment"
+  fun name(): String => "HTMLContext: HTML comment"
 
   fun apply(h: TestHelper) =>
-    let t = _HtmlContextTracker
+    let t = _HTMLContextTracker
     t.feed("<!--")
     t.feed_close_tag("<!--")
-    h.assert_is[HtmlContext](CtxComment, t.context())
+    h.assert_is[HTMLContext](CtxComment, t.context())
     t.feed(" comment text -->")
     t.feed_close_tag(" comment text -->")
-    h.assert_is[HtmlContext](CtxText, t.context())
+    h.assert_is[HTMLContext](CtxText, t.context())
 
 class \nodoc\ iso _TestContextScript is UnitTest
-  fun name(): String => "HtmlContext: script tag"
+  fun name(): String => "HTMLContext: script tag"
 
   fun apply(h: TestHelper) =>
-    let t = _HtmlContextTracker
+    let t = _HTMLContextTracker
     t.feed("<script>")
-    h.assert_is[HtmlContext](CtxScript, t.context())
+    h.assert_is[HTMLContext](CtxScript, t.context())
     t.feed("var x = 1;")
     t.feed_close_tag("var x = 1;")
-    h.assert_is[HtmlContext](CtxScript, t.context())
+    h.assert_is[HTMLContext](CtxScript, t.context())
     let closing = "</script>"
     t.feed(closing)
     t.feed_close_tag(closing)
-    h.assert_is[HtmlContext](CtxText, t.context())
+    h.assert_is[HTMLContext](CtxText, t.context())
 
 class \nodoc\ iso _TestContextStyle is UnitTest
-  fun name(): String => "HtmlContext: style tag"
+  fun name(): String => "HTMLContext: style tag"
 
   fun apply(h: TestHelper) =>
-    let t = _HtmlContextTracker
+    let t = _HTMLContextTracker
     t.feed("<style>")
-    h.assert_is[HtmlContext](CtxStyle, t.context())
+    h.assert_is[HTMLContext](CtxStyle, t.context())
     let closing = "</style>"
     t.feed(closing)
     t.feed_close_tag(closing)
-    h.assert_is[HtmlContext](CtxText, t.context())
+    h.assert_is[HTMLContext](CtxText, t.context())
 
 class \nodoc\ iso _TestContextRcdata is UnitTest
-  fun name(): String => "HtmlContext: title/textarea RCDATA"
+  fun name(): String => "HTMLContext: title/textarea RCDATA"
 
   fun apply(h: TestHelper) =>
     // <title> enters RCDATA and </title> exits it
-    let t1 = _HtmlContextTracker
+    let t1 = _HTMLContextTracker
     t1.feed("<title>")
-    h.assert_is[HtmlContext](CtxRcdata, t1.context())
+    h.assert_is[HTMLContext](CtxRcdata, t1.context())
     let closing1 = "</title>"
     t1.feed(closing1)
     t1.feed_close_tag(closing1)
-    h.assert_is[HtmlContext](CtxText, t1.context())
+    h.assert_is[HTMLContext](CtxText, t1.context())
 
     // <textarea> enters RCDATA and </textarea> exits it
-    let t2 = _HtmlContextTracker
+    let t2 = _HTMLContextTracker
     t2.feed("<textarea>")
-    h.assert_is[HtmlContext](CtxRcdata, t2.context())
+    h.assert_is[HTMLContext](CtxRcdata, t2.context())
     let closing2 = "</textarea>"
     t2.feed(closing2)
     t2.feed_close_tag(closing2)
-    h.assert_is[HtmlContext](CtxText, t2.context())
+    h.assert_is[HTMLContext](CtxText, t2.context())
 
     // </textarea> does NOT close a <title> RCDATA state
-    let t3 = _HtmlContextTracker
+    let t3 = _HTMLContextTracker
     t3.feed("<title>")
-    h.assert_is[HtmlContext](CtxRcdata, t3.context())
+    h.assert_is[HTMLContext](CtxRcdata, t3.context())
     let wrong1 = "</textarea>"
     t3.feed(wrong1)
     t3.feed_close_tag(wrong1)
-    h.assert_is[HtmlContext](CtxRcdata, t3.context())
+    h.assert_is[HTMLContext](CtxRcdata, t3.context())
 
     // </title> does NOT close a <textarea> RCDATA state
-    let t4 = _HtmlContextTracker
+    let t4 = _HTMLContextTracker
     t4.feed("<textarea>")
-    h.assert_is[HtmlContext](CtxRcdata, t4.context())
+    h.assert_is[HTMLContext](CtxRcdata, t4.context())
     let wrong2 = "</title>"
     t4.feed(wrong2)
     t4.feed_close_tag(wrong2)
-    h.assert_is[HtmlContext](CtxRcdata, t4.context())
+    h.assert_is[HTMLContext](CtxRcdata, t4.context())
 
-class \nodoc\ iso _TestContextUrlAttr is UnitTest
-  fun name(): String => "HtmlContext: URL attributes"
+class \nodoc\ iso _TestContextURLAttr is UnitTest
+  fun name(): String => "HTMLContext: URL attributes"
 
   fun apply(h: TestHelper) =>
-    let t = _HtmlContextTracker
+    let t = _HTMLContextTracker
     t.feed("<a href=\"")
-    h.assert_is[HtmlContext](CtxUrlAttr, t.context())
+    h.assert_is[HTMLContext](CtxURLAttr, t.context())
 
 class \nodoc\ iso _TestContextJsAttr is UnitTest
-  fun name(): String => "HtmlContext: JS event attributes"
+  fun name(): String => "HTMLContext: JS event attributes"
 
   fun apply(h: TestHelper) =>
-    let t = _HtmlContextTracker
+    let t = _HTMLContextTracker
     t.feed("<div onclick=\"")
-    h.assert_is[HtmlContext](CtxJsAttr, t.context())
+    h.assert_is[HTMLContext](CtxJsAttr, t.context())
 
-class \nodoc\ iso _TestContextCssAttr is UnitTest
-  fun name(): String => "HtmlContext: style attribute"
+class \nodoc\ iso _TestContextCSSAttr is UnitTest
+  fun name(): String => "HTMLContext: style attribute"
 
   fun apply(h: TestHelper) =>
-    let t = _HtmlContextTracker
+    let t = _HTMLContextTracker
     t.feed("<div style=\"")
-    h.assert_is[HtmlContext](CtxCssAttr, t.context())
+    h.assert_is[HTMLContext](CtxCSSAttr, t.context())
 
 class \nodoc\ iso _TestContextClone is UnitTest
-  fun name(): String => "HtmlContext: clone preserves state"
+  fun name(): String => "HTMLContext: clone preserves state"
 
   fun apply(h: TestHelper) =>
-    let t: _HtmlContextTracker ref = _HtmlContextTracker
+    let t: _HTMLContextTracker ref = _HTMLContextTracker
     t.feed("<div class=\"")
     let t2 = t.clone()
     h.assert_true(t.eq(t2))
     t.feed("foo\"")
     // Original advanced, clone stayed
     h.assert_false(t.eq(t2))
-    h.assert_is[HtmlContext](CtxHtmlAttr, t2.context())
+    h.assert_is[HTMLContext](CtxHTMLAttr, t2.context())
 
 class \nodoc\ iso _TestContextBranchConsistency is UnitTest
-  fun name(): String => "HtmlContext: branch consistency check"
+  fun name(): String => "HTMLContext: branch consistency check"
 
   fun apply(h: TestHelper) =>
     // Both branches end in text — consistent
-    let t1: _HtmlContextTracker ref = _HtmlContextTracker
+    let t1: _HTMLContextTracker ref = _HTMLContextTracker
     t1.feed("<p>")
     let t2 = t1.clone()
     t1.feed("hello")
@@ -3775,7 +3681,7 @@ class \nodoc\ iso _TestContextBranchConsistency is UnitTest
     h.assert_true(t1.eq(t2))
 
     // One branch opens a tag — inconsistent
-    let t3: _HtmlContextTracker ref = _HtmlContextTracker
+    let t3: _HTMLContextTracker ref = _HTMLContextTracker
     t3.feed("<p>")
     let t4 = t3.clone()
     t3.feed("<div>")
@@ -3783,83 +3689,83 @@ class \nodoc\ iso _TestContextBranchConsistency is UnitTest
     h.assert_false(t3.eq(t4))
 
 class \nodoc\ iso _TestContextCaseInsensitiveTags is UnitTest
-  fun name(): String => "HtmlContext: case-insensitive tag matching"
+  fun name(): String => "HTMLContext: case-insensitive tag matching"
 
   fun apply(h: TestHelper) =>
-    let t1 = _HtmlContextTracker
+    let t1 = _HTMLContextTracker
     t1.feed("<SCRIPT>")
-    h.assert_is[HtmlContext](CtxScript, t1.context())
+    h.assert_is[HTMLContext](CtxScript, t1.context())
 
-    let t2 = _HtmlContextTracker
+    let t2 = _HTMLContextTracker
     t2.feed("<Script>")
-    h.assert_is[HtmlContext](CtxScript, t2.context())
+    h.assert_is[HTMLContext](CtxScript, t2.context())
 
-    let t3 = _HtmlContextTracker
+    let t3 = _HTMLContextTracker
     t3.feed("<STYLE>")
-    h.assert_is[HtmlContext](CtxStyle, t3.context())
+    h.assert_is[HTMLContext](CtxStyle, t3.context())
 
-    let t4 = _HtmlContextTracker
+    let t4 = _HTMLContextTracker
     t4.feed("<TITLE>")
-    h.assert_is[HtmlContext](CtxRcdata, t4.context())
+    h.assert_is[HTMLContext](CtxRcdata, t4.context())
 
 class \nodoc\ iso _TestContextScriptWithAttrs is UnitTest
-  fun name(): String => "HtmlContext: script tag with attributes"
+  fun name(): String => "HTMLContext: script tag with attributes"
 
   fun apply(h: TestHelper) =>
-    let t = _HtmlContextTracker
+    let t = _HTMLContextTracker
     t.feed("<script type=\"text/javascript\">")
-    h.assert_is[HtmlContext](CtxScript, t.context())
+    h.assert_is[HTMLContext](CtxScript, t.context())
 
 class \nodoc\ iso _TestContextClosingTag is UnitTest
-  fun name(): String => "HtmlContext: closing tag returns to text"
+  fun name(): String => "HTMLContext: closing tag returns to text"
 
   fun apply(h: TestHelper) =>
-    let t = _HtmlContextTracker
+    let t = _HTMLContextTracker
     t.feed("<div>hello</div>")
-    h.assert_is[HtmlContext](CtxText, t.context())
+    h.assert_is[HTMLContext](CtxText, t.context())
 
 class \nodoc\ iso _TestContextCaseInsensitiveClose is UnitTest
-  fun name(): String => "HtmlContext: case-insensitive closing tags"
+  fun name(): String => "HTMLContext: case-insensitive closing tags"
 
   fun apply(h: TestHelper) =>
-    let t = _HtmlContextTracker
+    let t = _HTMLContextTracker
     t.feed("<script>")
-    h.assert_is[HtmlContext](CtxScript, t.context())
+    h.assert_is[HTMLContext](CtxScript, t.context())
     let closing = "</SCRIPT>"
     t.feed(closing)
     t.feed_close_tag(closing)
-    h.assert_is[HtmlContext](CtxText, t.context())
+    h.assert_is[HTMLContext](CtxText, t.context())
 
 class \nodoc\ iso _TestContextCloseTagWhitespace is UnitTest
-  fun name(): String => "HtmlContext: closing tag with whitespace before >"
+  fun name(): String => "HTMLContext: closing tag with whitespace before >"
 
   fun apply(h: TestHelper) =>
     // </script > is a valid closing tag per the HTML spec
-    let t1 = _HtmlContextTracker
+    let t1 = _HTMLContextTracker
     t1.feed("<script>")
     let closing1 = "</script >"
     t1.feed(closing1)
     t1.feed_close_tag(closing1)
-    h.assert_is[HtmlContext](CtxText, t1.context())
+    h.assert_is[HTMLContext](CtxText, t1.context())
 
     // Multiple whitespace chars
-    let t2 = _HtmlContextTracker
+    let t2 = _HTMLContextTracker
     t2.feed("<style>")
     let closing2 = "</style\t\n >"
     t2.feed(closing2)
     t2.feed_close_tag(closing2)
-    h.assert_is[HtmlContext](CtxText, t2.context())
+    h.assert_is[HTMLContext](CtxText, t2.context())
 
     // No whitespace still works
-    let t3 = _HtmlContextTracker
+    let t3 = _HTMLContextTracker
     t3.feed("<script>")
     let closing3 = "</script>"
     t3.feed(closing3)
     t3.feed_close_tag(closing3)
-    h.assert_is[HtmlContext](CtxText, t3.context())
+    h.assert_is[HTMLContext](CtxText, t3.context())
 
 class \nodoc\ iso _PropContextTextRoundtrip is Property1[String]
-  fun name(): String => "HtmlContext: text without < stays in text state"
+  fun name(): String => "HTMLContext: text without < stays in text state"
 
   fun gen(): Generator[String] =>
     // Generate strings of lowercase letters — no < to stay in text state
@@ -3873,44 +3779,44 @@ class \nodoc\ iso _PropContextTextRoundtrip is Property1[String]
       })
 
   fun property(arg1: String, h: PropertyHelper) =>
-    let t = _HtmlContextTracker
+    let t = _HTMLContextTracker
     t.feed(arg1)
-    h.assert_is[HtmlContext](CtxText, t.context())
+    h.assert_is[HTMLContext](CtxText, t.context())
 
-
-// ---------------------------------------------------------------------------
-// HTML escape function tests
-// ---------------------------------------------------------------------------
-
-class \nodoc\ iso _TestEscapeHtmlText is UnitTest
+class \nodoc\ iso _TestEscapeHTMLText is UnitTest
   fun name(): String => "HtmlEscape: text escapes all five chars"
 
   fun apply(h: TestHelper) =>
-    h.assert_eq[String]("&amp;&lt;&gt;&#34;&#39;",
-      _HtmlEscape.html_text("&<>\"'"))
-    h.assert_eq[String]("hello", _HtmlEscape.html_text("hello"))
-    h.assert_eq[String]("", _HtmlEscape.html_text(""))
-    h.assert_eq[String]("a&amp;b&lt;c", _HtmlEscape.html_text("a&b<c"))
+    h.assert_eq[String](
+      "&amp;&lt;&gt;&#34;&#39;",
+      _HTMLEscape.html_text("&<>\"'"))
+    h.assert_eq[String]("hello", _HTMLEscape.html_text("hello"))
+    h.assert_eq[String]("", _HTMLEscape.html_text(""))
+    h.assert_eq[String]("a&amp;b&lt;c", _HTMLEscape.html_text("a&b<c"))
 
-class \nodoc\ iso _TestEscapeHtmlAttr is UnitTest
+class \nodoc\ iso _TestEscapeHTMLAttr is UnitTest
   fun name(): String => "HtmlEscape: attr uses same escaping as text"
 
   fun apply(h: TestHelper) =>
-    h.assert_eq[String](_HtmlEscape.html_text("a<b"),
-      _HtmlEscape.html_attr("a<b"))
+    h.assert_eq[String](
+      _HTMLEscape.html_text("a<b"),
+      _HTMLEscape.html_attr("a<b"))
 
-class \nodoc\ iso _TestEscapeUrl is UnitTest
+class \nodoc\ iso _TestEscapeURL is UnitTest
   fun name(): String => "HtmlEscape: URL filters dangerous schemes"
 
   fun apply(h: TestHelper) =>
-    h.assert_eq[String]("#ZgotmplZ",
-      _HtmlEscape.url_attr("javascript:alert(1)"))
-    h.assert_eq[String]("#ZgotmplZ",
-      _HtmlEscape.url_attr("vbscript:run"))
-    h.assert_eq[String]("#ZgotmplZ",
-      _HtmlEscape.url_attr("data:text/html,<script>"))
+    h.assert_eq[String](
+      "#ZgotmplZ",
+      _HTMLEscape.url_attr("javascript:alert(1)"))
+    h.assert_eq[String](
+      "#ZgotmplZ",
+      _HTMLEscape.url_attr("vbscript:run"))
+    h.assert_eq[String](
+      "#ZgotmplZ",
+      _HTMLEscape.url_attr("data:text/html,<script>"))
     // Safe URLs pass through (with encoding)
-    let result = _HtmlEscape.url_attr("https://example.com")
+    let result = _HTMLEscape.url_attr("https://example.com")
     h.assert_true(result.contains("example.com"))
     h.assert_false(result.contains("#ZgotmplZ"))
 
@@ -3918,55 +3824,55 @@ class \nodoc\ iso _TestEscapeJs is UnitTest
   fun name(): String => "HtmlEscape: JS escapes special chars"
 
   fun apply(h: TestHelper) =>
-    h.assert_eq[String]("\\\\", _HtmlEscape.js_string("\\"))
-    h.assert_eq[String]("\\'", _HtmlEscape.js_string("'"))
-    h.assert_eq[String]("\\\"", _HtmlEscape.js_string("\""))
-    h.assert_eq[String]("\\x3c", _HtmlEscape.js_string("<"))
-    h.assert_eq[String]("\\x3e", _HtmlEscape.js_string(">"))
-    h.assert_eq[String]("\\x26", _HtmlEscape.js_string("&"))
-    h.assert_eq[String]("\\x60", _HtmlEscape.js_string("`"))
-    h.assert_eq[String]("hello", _HtmlEscape.js_string("hello"))
+    h.assert_eq[String]("\\\\", _HTMLEscape.js_string("\\"))
+    h.assert_eq[String]("\\'", _HTMLEscape.js_string("'"))
+    h.assert_eq[String]("\\\"", _HTMLEscape.js_string("\""))
+    h.assert_eq[String]("\\x3c", _HTMLEscape.js_string("<"))
+    h.assert_eq[String]("\\x3e", _HTMLEscape.js_string(">"))
+    h.assert_eq[String]("\\x26", _HTMLEscape.js_string("&"))
+    h.assert_eq[String]("\\x60", _HTMLEscape.js_string("`"))
+    h.assert_eq[String]("hello", _HTMLEscape.js_string("hello"))
 
-class \nodoc\ iso _TestEscapeCss is UnitTest
+class \nodoc\ iso _TestEscapeCSS is UnitTest
   fun name(): String => "HtmlEscape: CSS escapes unsafe chars"
 
   fun apply(h: TestHelper) =>
-    h.assert_eq[String]("hello", _HtmlEscape.css_value("hello"))
+    h.assert_eq[String]("hello", _HTMLEscape.css_value("hello"))
     // Colon should be escaped
-    let result = _HtmlEscape.css_value(":")
+    let result = _HTMLEscape.css_value(":")
     h.assert_false(result == ":")
 
 class \nodoc\ iso _TestEscapeComment is UnitTest
   fun name(): String => "HtmlEscape: comment strips dashes"
 
   fun apply(h: TestHelper) =>
-    h.assert_eq[String]("ab", _HtmlEscape.comment("a--b"))
-    h.assert_eq[String]("hello", _HtmlEscape.comment("hello"))
-    h.assert_eq[String]("", _HtmlEscape.comment("--"))
+    h.assert_eq[String]("ab", _HTMLEscape.comment("a--b"))
+    h.assert_eq[String]("hello", _HTMLEscape.comment("hello"))
+    h.assert_eq[String]("", _HTMLEscape.comment("--"))
 
 class \nodoc\ iso _TestEscapeRcdata is UnitTest
   fun name(): String => "HtmlEscape: RCDATA escapes < and &"
 
   fun apply(h: TestHelper) =>
-    h.assert_eq[String]("&amp;&lt;", _HtmlEscape.rcdata("&<"))
-    h.assert_eq[String]("hello", _HtmlEscape.rcdata("hello"))
-    h.assert_eq[String]("a&amp;b&lt;c>d", _HtmlEscape.rcdata("a&b<c>d"))
+    h.assert_eq[String]("&amp;&lt;", _HTMLEscape.rcdata("&<"))
+    h.assert_eq[String]("hello", _HTMLEscape.rcdata("hello"))
+    h.assert_eq[String]("a&amp;b&lt;c>d", _HTMLEscape.rcdata("a&b<c>d"))
 
-class \nodoc\ iso _TestEscapeUrlPercentEncoding is UnitTest
+class \nodoc\ iso _TestEscapeURLPercentEncoding is UnitTest
   fun name(): String => "HtmlEscape: URL percent-encodes special chars"
 
   fun apply(h: TestHelper) =>
     // Space should be percent-encoded, result then HTML-entity-encoded
-    let result = _HtmlEscape.url_attr("hello world")
+    let result = _HTMLEscape.url_attr("hello world")
     h.assert_true(result.contains("%20"))
     h.assert_false(result.contains(" "))
 
-class \nodoc\ iso _TestEscapeUrlNoFalsePositive is UnitTest
+class \nodoc\ iso _TestEscapeURLNoFalsePositive is UnitTest
   fun name(): String => "HtmlEscape: URL allows data: in path/query"
 
   fun apply(h: TestHelper) =>
     // "data:" in a query parameter should not be blocked
-    let result = _HtmlEscape.url_attr("https://example.com/?q=data:foo")
+    let result = _HTMLEscape.url_attr("https://example.com/?q=data:foo")
     h.assert_false(result == "#ZgotmplZ")
 
 class \nodoc\ iso _TestEscapeJsControlChars is UnitTest
@@ -3974,31 +3880,31 @@ class \nodoc\ iso _TestEscapeJsControlChars is UnitTest
 
   fun apply(h: TestHelper) =>
     // Control char (0x01) should be hex-escaped
-    let ctrl = recover val String.>push(0x01) end
-    let result = _HtmlEscape.js_string(ctrl)
+    let ctrl = recover val String .> push(0x01) end
+    let result = _HTMLEscape.js_string(ctrl)
     h.assert_eq[String]("\\x01", result)
     // High byte (0x80) should be hex-escaped
-    let high = recover val String.>push(0x80) end
-    let result2 = _HtmlEscape.js_string(high)
+    let high = recover val String .> push(0x80) end
+    let result2 = _HTMLEscape.js_string(high)
     h.assert_eq[String]("\\x80", result2)
 
-class \nodoc\ iso _TestEscapeCssFormat is UnitTest
+class \nodoc\ iso _TestEscapeCSSFormat is UnitTest
   fun name(): String => "HtmlEscape: CSS escape format is \\HH<space>"
 
   fun apply(h: TestHelper) =>
     // Colon (0x3a) should be escaped as \3a followed by a space
-    h.assert_eq[String]("\\3a ", _HtmlEscape.css_value(":"))
+    h.assert_eq[String]("\\3a ", _HTMLEscape.css_value(":"))
     // Semicolon (0x3b) should be escaped as \3b followed by a space
-    h.assert_eq[String]("\\3b ", _HtmlEscape.css_value(";"))
+    h.assert_eq[String]("\\3b ", _HTMLEscape.css_value(";"))
 
 class \nodoc\ iso _TestEscapeErrorContext is UnitTest
   fun name(): String => "HtmlEscape: error context returns raw string"
 
   fun apply(h: TestHelper) =>
     let raw = "<script>alert('xss')</script>"
-    h.assert_eq[String](raw, _HtmlEscape.for_context(CtxError, raw))
+    h.assert_eq[String](raw, _HTMLEscape.for_context(CtxError, raw))
 
-class \nodoc\ iso _PropEscapeHtmlNoUnescapedChars is Property1[String]
+class \nodoc\ iso _PropEscapeHTMLNoUnescapedChars is Property1[String]
   fun name(): String =>
     "HtmlEscape: html_text output never contains raw & < > \" '"
 
@@ -4006,7 +3912,7 @@ class \nodoc\ iso _PropEscapeHtmlNoUnescapedChars is Property1[String]
     Generators.ascii(0, 100)
 
   fun property(arg1: String, h: PropertyHelper) =>
-    let escaped = _HtmlEscape.html_text(arg1)
+    let escaped = _HTMLEscape.html_text(arg1)
     // Check that no raw special chars remain (they should all be entities)
     var i: USize = 0
     while i < escaped.size() do
@@ -4054,7 +3960,7 @@ class \nodoc\ iso _PropEscapeRcdataNoUnescapedChars is Property1[String]
     Generators.ascii(0, 100)
 
   fun property(arg1: String, h: PropertyHelper) =>
-    let escaped = _HtmlEscape.rcdata(arg1)
+    let escaped = _HTMLEscape.rcdata(arg1)
     var i: USize = 0
     while i < escaped.size() do
       try
@@ -4079,16 +3985,11 @@ class \nodoc\ iso _PropEscapeRcdataNoUnescapedChars is Property1[String]
     end
     false
 
-
-// ---------------------------------------------------------------------------
-// RenderableValue tests
-// ---------------------------------------------------------------------------
-
-class \nodoc\ iso _TestHtmlEscapingRenderer is UnitTest
+class \nodoc\ iso _TestHTMLEscapingRenderer is UnitTest
   fun name(): String => "RenderableValue: HtmlEscapingRenderer escapes"
 
   fun apply(h: TestHelper) =>
-    let result = _HtmlEscapingRenderer.render(CtxText, "<script>")
+    let result = _HTMLEscapingRenderer.render(CtxText, "<script>")
     h.assert_eq[String]("&lt;script&gt;", result)
 
 class \nodoc\ iso _TestNoEscapeRenderer is UnitTest
@@ -4098,17 +3999,12 @@ class \nodoc\ iso _TestNoEscapeRenderer is UnitTest
     let result = _NoEscapeRenderer.render(CtxText, "<script>")
     h.assert_eq[String]("<script>", result)
 
-
-// ---------------------------------------------------------------------------
-// HtmlTemplate tests
-// ---------------------------------------------------------------------------
-
-class \nodoc\ iso _TestHtmlTemplateBasicEscaping is UnitTest
-  fun name(): String => "HtmlTemplate: escapes variables in text context"
+class \nodoc\ iso _TestHTMLTemplateBasicEscaping is UnitTest
+  fun name(): String => "HTMLTemplate: escapes variables in text context"
 
   fun apply(h: TestHelper) =>
     try
-      let t = HtmlTemplate.parse("<p>{{ name }}</p>")?
+      let t = HTMLTemplate.parse("<p>{{ name }}</p>")?
       let v = TemplateValues
       v("name") = "<script>alert('xss')</script>"
       let result = t.render(v)?
@@ -4118,12 +4014,12 @@ class \nodoc\ iso _TestHtmlTemplateBasicEscaping is UnitTest
       h.fail("unexpected error")
     end
 
-class \nodoc\ iso _TestHtmlTemplateAttrEscaping is UnitTest
-  fun name(): String => "HtmlTemplate: escapes in attribute context"
+class \nodoc\ iso _TestHTMLTemplateAttrEscaping is UnitTest
+  fun name(): String => "HTMLTemplate: escapes in attribute context"
 
   fun apply(h: TestHelper) =>
     try
-      let t = HtmlTemplate.parse("<div class=\"{{ cls }}\">hello</div>")?
+      let t = HTMLTemplate.parse("<div class=\"{{ cls }}\">hello</div>")?
       let v = TemplateValues
       v("cls") = "a\"b&c"
       let result = t.render(v)?
@@ -4133,12 +4029,12 @@ class \nodoc\ iso _TestHtmlTemplateAttrEscaping is UnitTest
       h.fail("unexpected error")
     end
 
-class \nodoc\ iso _TestHtmlTemplateUrlEscaping is UnitTest
-  fun name(): String => "HtmlTemplate: escapes in URL attribute context"
+class \nodoc\ iso _TestHTMLTemplateURLEscaping is UnitTest
+  fun name(): String => "HTMLTemplate: escapes in URL attribute context"
 
   fun apply(h: TestHelper) =>
     try
-      let t = HtmlTemplate.parse("<a href=\"{{ url }}\">link</a>")?
+      let t = HTMLTemplate.parse("<a href=\"{{ url }}\">link</a>")?
       let v = TemplateValues
       v("url") = "javascript:alert(1)"
       let result = t.render(v)?
@@ -4149,12 +4045,12 @@ class \nodoc\ iso _TestHtmlTemplateUrlEscaping is UnitTest
       h.fail("unexpected error")
     end
 
-class \nodoc\ iso _TestHtmlTemplateUnescaped is UnitTest
-  fun name(): String => "HtmlTemplate: unescaped values bypass escaping"
+class \nodoc\ iso _TestHTMLTemplateUnescaped is UnitTest
+  fun name(): String => "HTMLTemplate: unescaped values bypass escaping"
 
   fun apply(h: TestHelper) =>
     try
-      let t = HtmlTemplate.parse("<p>{{ content }}</p>")?
+      let t = HTMLTemplate.parse("<p>{{ content }}</p>")?
       let v = TemplateValues
       v("content") = TemplateValue.unescaped("<em>bold</em>")
       let result = t.render(v)?
@@ -4163,13 +4059,13 @@ class \nodoc\ iso _TestHtmlTemplateUnescaped is UnitTest
       h.fail("unexpected error")
     end
 
-class \nodoc\ iso _TestHtmlTemplateUnescapedConvenience is UnitTest
+class \nodoc\ iso _TestHTMLTemplateUnescapedConvenience is UnitTest
   fun name(): String =>
-    "HtmlTemplate: TemplateValues.unescaped convenience method"
+    "HTMLTemplate: TemplateValues.unescaped convenience method"
 
   fun apply(h: TestHelper) =>
     try
-      let t = HtmlTemplate.parse("<p>{{ content }}</p>")?
+      let t = HTMLTemplate.parse("<p>{{ content }}</p>")?
       let v = TemplateValues
       v.unescaped("content", "<em>bold</em>")
       let result = t.render(v)?
@@ -4178,12 +4074,12 @@ class \nodoc\ iso _TestHtmlTemplateUnescapedConvenience is UnitTest
       h.fail("unexpected error")
     end
 
-class \nodoc\ iso _TestHtmlTemplatePipeEscaping is UnitTest
-  fun name(): String => "HtmlTemplate: pipe results are always escaped"
+class \nodoc\ iso _TestHTMLTemplatePipeEscaping is UnitTest
+  fun name(): String => "HTMLTemplate: pipe results are always escaped"
 
   fun apply(h: TestHelper) =>
     try
-      let t = HtmlTemplate.parse("<p>{{ name | upper }}</p>")?
+      let t = HTMLTemplate.parse("<p>{{ name | upper }}</p>")?
       let v = TemplateValues
       v("name") = "<b>hi</b>"
       let result = t.render(v)?
@@ -4194,53 +4090,54 @@ class \nodoc\ iso _TestHtmlTemplatePipeEscaping is UnitTest
       h.fail("unexpected error")
     end
 
-class \nodoc\ iso _TestHtmlTemplateIfBranchConsistency is UnitTest
+class \nodoc\ iso _TestHTMLTemplateIfBranchConsistency is UnitTest
   fun name(): String =>
-    "HtmlTemplate: rejects inconsistent if/else branches"
+    "HTMLTemplate: rejects inconsistent if/else branches"
 
   fun apply(h: TestHelper) =>
     // If-body opens a tag, else-body doesn't — inconsistent
     try
-      HtmlTemplate.parse(
+      HTMLTemplate.parse(
         "{{ if x }}<div class=\"{{ else }}hello{{ end }}")?
       h.fail("should have errored")
     end
 
-class \nodoc\ iso _TestHtmlTemplateLoopPreservesContext is UnitTest
-  fun name(): String => "HtmlTemplate: rejects loop that changes context"
+class \nodoc\ iso _TestHTMLTemplateLoopPreservesContext is UnitTest
+  fun name(): String => "HTMLTemplate: rejects loop that changes context"
 
   fun apply(h: TestHelper) =>
     // Loop body opens a tag without closing it
     try
-      HtmlTemplate.parse("{{ for x in items }}<div{{ end }}")?
+      HTMLTemplate.parse("{{ for x in items }}<div{{ end }}")?
       h.fail("should have errored")
     end
 
-class \nodoc\ iso _TestHtmlTemplateErrorInTagName is UnitTest
-  fun name(): String => "HtmlTemplate: rejects variable in tag name"
+class \nodoc\ iso _TestHTMLTemplateErrorInTagName is UnitTest
+  fun name(): String => "HTMLTemplate: rejects variable in tag name"
 
   fun apply(h: TestHelper) =>
     try
-      HtmlTemplate.parse("<{{ tag }}>hello</div>")?
+      HTMLTemplate.parse("<{{ tag }}>hello</div>")?
       h.fail("should have errored")
     end
 
-class \nodoc\ iso _TestHtmlTemplateErrorUnquotedAttr is UnitTest
-  fun name(): String => "HtmlTemplate: rejects variable in unquoted attr"
+class \nodoc\ iso _TestHTMLTemplateErrorUnquotedAttr is UnitTest
+  fun name(): String => "HTMLTemplate: rejects variable in unquoted attr"
 
   fun apply(h: TestHelper) =>
     try
-      HtmlTemplate.parse("<div class={{ cls }}>hello</div>")?
+      HTMLTemplate.parse("<div class={{ cls }}>hello</div>")?
       h.fail("should have errored")
     end
 
-class \nodoc\ iso _TestHtmlTemplateScriptContext is UnitTest
-  fun name(): String => "HtmlTemplate: JS-escapes in script context"
+class \nodoc\ iso _TestHTMLTemplateScriptContext is UnitTest
+  fun name(): String => "HTMLTemplate: JS-escapes in script context"
 
   fun apply(h: TestHelper) =>
     try
-      let t = HtmlTemplate.parse(
-        "<script>var x = \"{{ val }}\";</script>")?
+      let t =
+        HTMLTemplate.parse(
+  "<script>var x = \"{{ val }}\";</script>")?
       let v = TemplateValues
       v("val") = "a\"b"
       let result = t.render(v)?
@@ -4251,13 +4148,14 @@ class \nodoc\ iso _TestHtmlTemplateScriptContext is UnitTest
       h.fail("unexpected error")
     end
 
-class \nodoc\ iso _TestHtmlTemplateScriptBacktick is UnitTest
-  fun name(): String => "HtmlTemplate: escapes backticks in script context"
+class \nodoc\ iso _TestHTMLTemplateScriptBacktick is UnitTest
+  fun name(): String => "HTMLTemplate: escapes backticks in script context"
 
   fun apply(h: TestHelper) =>
     try
-      let t = HtmlTemplate.parse(
-        "<script>var x = \"{{ val }}\";</script>")?
+      let t =
+        HTMLTemplate.parse(
+  "<script>var x = \"{{ val }}\";</script>")?
       let v = TemplateValues
       v("val") = "a`b"
       let result = t.render(v)?
@@ -4267,12 +4165,12 @@ class \nodoc\ iso _TestHtmlTemplateScriptBacktick is UnitTest
       h.fail("unexpected error")
     end
 
-class \nodoc\ iso _TestHtmlTemplateCommentContext is UnitTest
-  fun name(): String => "HtmlTemplate: strips dashes in comment context"
+class \nodoc\ iso _TestHTMLTemplateCommentContext is UnitTest
+  fun name(): String => "HTMLTemplate: strips dashes in comment context"
 
   fun apply(h: TestHelper) =>
     try
-      let t = HtmlTemplate.parse("<!-- {{ note }} -->")?
+      let t = HTMLTemplate.parse("<!-- {{ note }} -->")?
       let v = TemplateValues
       v("note") = "a--b"
       let result = t.render(v)?
@@ -4283,12 +4181,12 @@ class \nodoc\ iso _TestHtmlTemplateCommentContext is UnitTest
       h.fail("unexpected error")
     end
 
-class \nodoc\ iso _TestHtmlTemplateCssAttrContext is UnitTest
-  fun name(): String => "HtmlTemplate: CSS-escapes in style attribute"
+class \nodoc\ iso _TestHTMLTemplateCSSAttrContext is UnitTest
+  fun name(): String => "HTMLTemplate: CSS-escapes in style attribute"
 
   fun apply(h: TestHelper) =>
     try
-      let t = HtmlTemplate.parse("<div style=\"color: {{ color }}\">x</div>")?
+      let t = HTMLTemplate.parse("<div style=\"color: {{ color }}\">x</div>")?
       let v = TemplateValues
       v("color") = "red;} body{background:url(evil)}"
       let result = t.render(v)?
@@ -4298,12 +4196,12 @@ class \nodoc\ iso _TestHtmlTemplateCssAttrContext is UnitTest
       h.fail("unexpected error")
     end
 
-class \nodoc\ iso _TestHtmlTemplateRcdataContext is UnitTest
-  fun name(): String => "HtmlTemplate: RCDATA-escapes in title element"
+class \nodoc\ iso _TestHTMLTemplateRcdataContext is UnitTest
+  fun name(): String => "HTMLTemplate: RCDATA-escapes in title element"
 
   fun apply(h: TestHelper) =>
     try
-      let t = HtmlTemplate.parse("<title>{{ page_title }}</title>")?
+      let t = HTMLTemplate.parse("<title>{{ page_title }}</title>")?
       let v = TemplateValues
       v("page_title") = "A & B <script>"
       let result = t.render(v)?
@@ -4315,16 +4213,16 @@ class \nodoc\ iso _TestHtmlTemplateRcdataContext is UnitTest
       h.fail("unexpected error")
     end
 
-class \nodoc\ iso _PropHtmlTemplateEscapesInText is Property1[String]
+class \nodoc\ iso _PropHTMLTemplateEscapesInText is Property1[String]
   fun name(): String =>
-    "HtmlTemplate: rendered text never contains raw < or >"
+    "HTMLTemplate: rendered text never contains raw < or >"
 
   fun gen(): Generator[String] =>
     Generators.ascii(1, 50)
 
   fun property(arg1: String, h: PropertyHelper) =>
     try
-      let t = HtmlTemplate.parse("<p>{{ x }}</p>")?
+      let t = HTMLTemplate.parse("<p>{{ x }}</p>")?
       let v = TemplateValues
       v("x") = arg1
       let result = t.render(v)?
@@ -4337,11 +4235,6 @@ class \nodoc\ iso _PropHtmlTemplateEscapesInText is Property1[String]
         end
       end
     end
-
-
-// ---------------------------------------------------------------------------
-// render_split unit tests
-// ---------------------------------------------------------------------------
 
 class \nodoc\ iso _TestRenderSplitEmpty is UnitTest
   fun name(): String => "render_split: empty template"
@@ -4357,7 +4250,6 @@ class \nodoc\ iso _TestRenderSplitEmpty is UnitTest
       h.fail("unexpected error")
     end
 
-
 class \nodoc\ iso _TestRenderSplitLiteralOnly is UnitTest
   fun name(): String => "render_split: literal-only template"
 
@@ -4371,7 +4263,6 @@ class \nodoc\ iso _TestRenderSplitLiteralOnly is UnitTest
     else
       h.fail("unexpected error")
     end
-
 
 class \nodoc\ iso _TestRenderSplitSingleVar is UnitTest
   fun name(): String => "render_split: single variable"
@@ -4390,7 +4281,6 @@ class \nodoc\ iso _TestRenderSplitSingleVar is UnitTest
     else
       h.fail("unexpected error")
     end
-
 
 class \nodoc\ iso _TestRenderSplitAdjacentVars is UnitTest
   fun name(): String => "render_split: adjacent variables"
@@ -4413,7 +4303,6 @@ class \nodoc\ iso _TestRenderSplitAdjacentVars is UnitTest
       h.fail("unexpected error")
     end
 
-
 class \nodoc\ iso _TestRenderSplitMissingVar is UnitTest
   fun name(): String => "render_split: missing variable renders empty dynamic"
 
@@ -4429,7 +4318,6 @@ class \nodoc\ iso _TestRenderSplitMissingVar is UnitTest
     else
       h.fail("unexpected error")
     end
-
 
 class \nodoc\ iso _TestRenderSplitIfCollapsed is UnitTest
   fun name(): String => "render_split: if block collapses into one dynamic"
@@ -4448,7 +4336,6 @@ class \nodoc\ iso _TestRenderSplitIfCollapsed is UnitTest
     else
       h.fail("unexpected error")
     end
-
 
 class \nodoc\ iso _TestRenderSplitIfElseCollapsed is UnitTest
   fun name(): String => "render_split: if/else renders chosen branch"
@@ -4472,7 +4359,6 @@ class \nodoc\ iso _TestRenderSplitIfElseCollapsed is UnitTest
     else
       h.fail("unexpected error")
     end
-
 
 class \nodoc\ iso _TestRenderSplitIfNotCollapsed is UnitTest
   fun name(): String => "render_split: ifnot collapses into one dynamic"
@@ -4499,7 +4385,6 @@ class \nodoc\ iso _TestRenderSplitIfNotCollapsed is UnitTest
       h.fail("unexpected error")
     end
 
-
 class \nodoc\ iso _TestRenderSplitLoopCollapsed is UnitTest
   fun name(): String => "render_split: loop collapses into one dynamic"
 
@@ -4521,7 +4406,6 @@ class \nodoc\ iso _TestRenderSplitLoopCollapsed is UnitTest
       h.fail("unexpected error")
     end
 
-
 class \nodoc\ iso _TestRenderSplitEmptyLoop is UnitTest
   fun name(): String => "render_split: empty loop produces empty dynamic"
 
@@ -4541,13 +4425,13 @@ class \nodoc\ iso _TestRenderSplitEmptyLoop is UnitTest
       h.fail("unexpected error")
     end
 
-
 class \nodoc\ iso _TestRenderSplitBlockTransparent is UnitTest
   fun name(): String => "render_split: block is transparent (literals merge)"
 
   fun apply(h: TestHelper) =>
     try
-      let partials = recover val
+      let partials =
+        recover val
         let m = Map[String, String]
         m("base") = "AA{{ block content }}default{{ end }}BB"
         m
@@ -4563,15 +4447,15 @@ class \nodoc\ iso _TestRenderSplitBlockTransparent is UnitTest
       h.fail("unexpected error")
     end
 
-
 class \nodoc\ iso _TestRenderSplitNestedControlFlow is UnitTest
   fun name(): String =>
     "render_split: nested control flow collapses into outer dynamic"
 
   fun apply(h: TestHelper) =>
     try
-      let t = Template.parse(
-        "S{{ if flag }}{{ if inner }}A{{ end }}{{ end }}E")?
+      let t =
+        Template.parse(
+  "S{{ if flag }}{{ if inner }}A{{ end }}{{ end }}E")?
       let v = TemplateValues
       v("flag") = "y"
       v("inner") = "y"
@@ -4584,7 +4468,6 @@ class \nodoc\ iso _TestRenderSplitNestedControlFlow is UnitTest
     else
       h.fail("unexpected error")
     end
-
 
 class \nodoc\ iso _TestRenderSplitPipe is UnitTest
   fun name(): String => "render_split: pipe in split produces filtered dynamic"
@@ -4603,11 +4486,6 @@ class \nodoc\ iso _TestRenderSplitPipe is UnitTest
     else
       h.fail("unexpected error")
     end
-
-
-// ---------------------------------------------------------------------------
-// render_split property-based tests
-// ---------------------------------------------------------------------------
 
 class \nodoc\ iso _PropRenderSplitRoundtrip
   is Property1[(String, String, String)]
@@ -4628,14 +4506,16 @@ class \nodoc\ iso _PropRenderSplitRoundtrip
     (let n1, let n2, let value) = arg1
     if n1 == n2 then return end
     try
-      let t = Template.parse(
-        "pre{{ " + n1 + " }}mid{{ " + n2 + " }}post")?
+      let t =
+        Template.parse(
+  "pre{{ " + n1 + " }}mid{{ " + n2 + " }}post")?
       let v = TemplateValues
       v(n1) = value
       v(n2) = value + "2"
       let rendered = t.render(v)?
       (let s, let d) = t.render_split(v)?
-      let recombined = recover val
+      let recombined =
+        recover val
         let buf = String
         for (i, stat) in s.pairs() do
           buf.append(stat)
@@ -4645,7 +4525,6 @@ class \nodoc\ iso _PropRenderSplitRoundtrip
       end
       h.assert_eq[String](rendered, recombined)
     end
-
 
 class \nodoc\ iso _PropRenderSplitInterleaving
   is Property1[(String, String, String)]
@@ -4666,8 +4545,9 @@ class \nodoc\ iso _PropRenderSplitInterleaving
     (let n1, let n2, let value) = arg1
     if n1 == n2 then return end
     try
-      let t = Template.parse(
-        "pre{{ " + n1 + " }}mid{{ " + n2 + " }}post")?
+      let t =
+        Template.parse(
+  "pre{{ " + n1 + " }}mid{{ " + n2 + " }}post")?
       let v = TemplateValues
       v(n1) = value
       v(n2) = value
@@ -4675,14 +4555,13 @@ class \nodoc\ iso _PropRenderSplitInterleaving
       h.assert_eq[USize](d.size() + 1, s.size())
     end
 
-
-class \nodoc\ iso _PropHtmlRenderSplitRoundtrip
+class \nodoc\ iso _PropHTMLRenderSplitRoundtrip
   is Property1[(String, String, String)]
   """
-  For an HtmlTemplate with two variables in text context, recombining
+  For an HTMLTemplate with two variables in text context, recombining
   render_split output produces the same string as render().
   """
-  fun name(): String => "HtmlTemplate render_split: roundtrip matches render()"
+  fun name(): String => "HTMLTemplate render_split: roundtrip matches render()"
 
   fun gen(): Generator[(String, String, String)] =>
     Generators.map3[String, String, String, (String, String, String)](
@@ -4695,14 +4574,16 @@ class \nodoc\ iso _PropHtmlRenderSplitRoundtrip
     (let n1, let n2, let value) = arg1
     if n1 == n2 then return end
     try
-      let t = HtmlTemplate.parse(
-        "<p>{{ " + n1 + " }}</p><p>{{ " + n2 + " }}</p>")?
+      let t =
+        HTMLTemplate.parse(
+  "<p>{{ " + n1 + " }}</p><p>{{ " + n2 + " }}</p>")?
       let v = TemplateValues
       v(n1) = value
       v(n2) = value + "2"
       let rendered = t.render(v)?
       (let s, let d) = t.render_split(v)?
-      let recombined = recover val
+      let recombined =
+        recover val
         let buf = String
         for (i, stat) in s.pairs() do
           buf.append(stat)
@@ -4712,11 +4593,6 @@ class \nodoc\ iso _PropHtmlRenderSplitRoundtrip
       end
       h.assert_eq[String](rendered, recombined)
     end
-
-
-// ---------------------------------------------------------------------------
-// render_to tests
-// ---------------------------------------------------------------------------
 
 class \nodoc\ iso _CountingSink is TemplateSink
   """
@@ -4737,7 +4613,6 @@ class \nodoc\ iso _CountingSink is TemplateSink
     dynamic_count = dynamic_count + 1
     _expect_literal = true
 
-
 class \nodoc\ iso _TestRenderToAlternation is UnitTest
   fun name(): String => "render_to: calls alternate literal/dynamic"
 
@@ -4756,7 +4631,6 @@ class \nodoc\ iso _TestRenderToAlternation is UnitTest
       h.fail("unexpected error")
     end
 
-
 class \nodoc\ iso _ContentSink is TemplateSink
   """
   Test sink that records all segments for content verification.
@@ -4769,7 +4643,6 @@ class \nodoc\ iso _ContentSink is TemplateSink
 
   fun ref dynamic_value(value: String) =>
     dynamics.push(value)
-
 
 class \nodoc\ iso _TestRenderToContent is UnitTest
   fun name(): String => "render_to: literal and dynamic content correct"
@@ -4790,18 +4663,13 @@ class \nodoc\ iso _TestRenderToContent is UnitTest
       h.fail("unexpected error")
     end
 
-
-// ---------------------------------------------------------------------------
-// HTML render_split / render_to tests
-// ---------------------------------------------------------------------------
-
-class \nodoc\ iso _TestHtmlRenderSplitEscaped is UnitTest
+class \nodoc\ iso _TestHTMLRenderSplitEscaped is UnitTest
   fun name(): String =>
-    "HtmlTemplate render_split: dynamic values are escaped"
+    "HTMLTemplate render_split: dynamic values are escaped"
 
   fun apply(h: TestHelper) =>
     try
-      let t = HtmlTemplate.parse("<p>{{ name }}</p>")?
+      let t = HTMLTemplate.parse("<p>{{ name }}</p>")?
       let v = TemplateValues
       v("name") = "<script>alert('xss')</script>"
       (let s, let d) = t.render_split(v)?
@@ -4816,14 +4684,13 @@ class \nodoc\ iso _TestHtmlRenderSplitEscaped is UnitTest
       h.fail("unexpected error")
     end
 
-
-class \nodoc\ iso _TestHtmlRenderToEscaped is UnitTest
+class \nodoc\ iso _TestHTMLRenderToEscaped is UnitTest
   fun name(): String =>
-    "HtmlTemplate render_to: dynamic values are escaped"
+    "HTMLTemplate render_to: dynamic values are escaped"
 
   fun apply(h: TestHelper) =>
     try
-      let t = HtmlTemplate.parse("<p>{{ name }}</p>")?
+      let t = HTMLTemplate.parse("<p>{{ name }}</p>")?
       let v = TemplateValues
       v("name") = "<b>bold</b>"
       let sink: _ContentSink ref = _ContentSink
@@ -4839,14 +4706,13 @@ class \nodoc\ iso _TestHtmlRenderToEscaped is UnitTest
       h.fail("unexpected error")
     end
 
-
-class \nodoc\ iso _TestHtmlRenderSplitUnescaped is UnitTest
+class \nodoc\ iso _TestHTMLRenderSplitUnescaped is UnitTest
   fun name(): String =>
-    "HtmlTemplate render_split: unescaped values bypass escaping"
+    "HTMLTemplate render_split: unescaped values bypass escaping"
 
   fun apply(h: TestHelper) =>
     try
-      let t = HtmlTemplate.parse("<p>{{ content }}</p>")?
+      let t = HTMLTemplate.parse("<p>{{ content }}</p>")?
       let v = TemplateValues
       v("content") = TemplateValue.unescaped("<em>bold</em>")
       (let s, let d) = t.render_split(v)?
@@ -4856,7 +4722,6 @@ class \nodoc\ iso _TestHtmlRenderSplitUnescaped is UnitTest
     else
       h.fail("unexpected error")
     end
-
 
 class \nodoc\ iso _TestRenderToIfCollapsed is UnitTest
   fun name(): String => "render_to: if block collapses into one dynamic"
@@ -4874,7 +4739,6 @@ class \nodoc\ iso _TestRenderToIfCollapsed is UnitTest
     else
       h.fail("unexpected error")
     end
-
 
 class \nodoc\ iso _TestRenderToLoopCollapsed is UnitTest
   fun name(): String => "render_to: loop collapses into one dynamic"
@@ -4896,15 +4760,15 @@ class \nodoc\ iso _TestRenderToLoopCollapsed is UnitTest
       h.fail("unexpected error")
     end
 
-
-class \nodoc\ iso _TestHtmlRenderSplitIfCollapsed is UnitTest
+class \nodoc\ iso _TestHTMLRenderSplitIfCollapsed is UnitTest
   fun name(): String =>
-    "HtmlTemplate render_split: if block escapes collapsed output"
+    "HTMLTemplate render_split: if block escapes collapsed output"
 
   fun apply(h: TestHelper) =>
     try
-      let t = HtmlTemplate.parse(
-        "<p>{{ if flag }}{{ msg }}{{ end }}</p>")?
+      let t =
+        HTMLTemplate.parse(
+  "<p>{{ if flag }}{{ msg }}{{ end }}</p>")?
       let v = TemplateValues
       v("flag") = "true"
       v("msg") = "<script>alert('xss')</script>"
@@ -4919,7 +4783,6 @@ class \nodoc\ iso _TestHtmlRenderSplitIfCollapsed is UnitTest
     else
       h.fail("unexpected error")
     end
-
 
 class \nodoc\ iso _TestRenderToEmpty is UnitTest
   fun name(): String => "render_to: empty template"
@@ -4936,7 +4799,6 @@ class \nodoc\ iso _TestRenderToEmpty is UnitTest
       h.fail("unexpected error")
     end
 
-
 class \nodoc\ iso _TestRenderToLiteralOnly is UnitTest
   fun name(): String => "render_to: literal-only template"
 
@@ -4951,7 +4813,6 @@ class \nodoc\ iso _TestRenderToLiteralOnly is UnitTest
     else
       h.fail("unexpected error")
     end
-
 
 class \nodoc\ iso _TestRenderToPipe is UnitTest
   fun name(): String => "render_to: pipe produces filtered dynamic"
@@ -4972,7 +4833,6 @@ class \nodoc\ iso _TestRenderToPipe is UnitTest
       h.fail("unexpected error")
     end
 
-
 class \nodoc\ iso _TestRenderToMissingVar is UnitTest
   fun name(): String => "render_to: missing variable renders empty dynamic"
 
@@ -4990,7 +4850,6 @@ class \nodoc\ iso _TestRenderToMissingVar is UnitTest
       h.fail("unexpected error")
     end
 
-
 class \nodoc\ iso _TestRenderToIfNotCollapsed is UnitTest
   fun name(): String => "render_to: ifnot collapses into one dynamic"
 
@@ -5005,7 +4864,6 @@ class \nodoc\ iso _TestRenderToIfNotCollapsed is UnitTest
     else
       h.fail("unexpected error")
     end
-
 
 class \nodoc\ iso _TestRenderToAdjacentVars is UnitTest
   fun name(): String => "render_to: adjacent variables"
@@ -5025,13 +4883,13 @@ class \nodoc\ iso _TestRenderToAdjacentVars is UnitTest
       h.fail("unexpected error")
     end
 
-
 class \nodoc\ iso _TestRenderToBlockTransparent is UnitTest
   fun name(): String => "render_to: block is transparent (literals merge)"
 
   fun apply(h: TestHelper) =>
     try
-      let partials = recover val
+      let partials =
+        recover val
         let m = Map[String, String]
         m("base") = "AA{{ block content }}default{{ end }}BB"
         m
@@ -5047,15 +4905,15 @@ class \nodoc\ iso _TestRenderToBlockTransparent is UnitTest
       h.fail("unexpected error")
     end
 
-
 class \nodoc\ iso _TestRenderToNestedControlFlow is UnitTest
   fun name(): String =>
     "render_to: nested control flow collapses into outer dynamic"
 
   fun apply(h: TestHelper) =>
     try
-      let t = Template.parse(
-        "S{{ if flag }}{{ if inner }}A{{ end }}{{ end }}E")?
+      let t =
+        Template.parse(
+  "S{{ if flag }}{{ if inner }}A{{ end }}{{ end }}E")?
       let v = TemplateValues
       v("flag") = "y"
       v("inner") = "y"

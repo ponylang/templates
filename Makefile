@@ -5,6 +5,7 @@ GET_DEPENDENCIES_WITH := corral fetch
 CLEAN_DEPENDENCIES_WITH := corral clean
 COMPILE_WITH := corral run -- ponyc
 BUILD_DOCS_WITH := corral run -- pony-doc
+LINT_WITH := corral run -- pony-lint
 
 BUILD_DIR ?= build/$(config)
 COVERAGE_DIR ?= build/coverage
@@ -71,6 +72,10 @@ $(coverage_binary): $(SOURCE_FILES) | $(COVERAGE_DIR)
 	$(GET_DEPENDENCIES_WITH)
 	$(PONYC) --debug -o $(COVERAGE_DIR) $(SRC_DIR)
 
+lint:
+	$(GET_DEPENDENCIES_WITH)
+	$(LINT_WITH) .
+
 all: test
 
 $(BUILD_DIR):
@@ -79,4 +84,4 @@ $(BUILD_DIR):
 $(COVERAGE_DIR):
 	mkdir -p $(COVERAGE_DIR)
 
-.PHONY: all examples clean docs TAGS test coverage test-one
+.PHONY: all examples clean docs TAGS test coverage test-one lint
