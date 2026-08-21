@@ -102,8 +102,8 @@ primitive Title is Filter
     let out = recover iso String(input.size()) end
     var word_start = true
     for byte in input.values() do
-      if (byte == ' ') or (byte == '\t') or (byte == '\n')
-        or (byte == '\r')
+      if (byte == ' ') or (byte == '\t') or (byte == '\n') or
+        (byte == '\r')
       then
         out.push(byte)
         word_start = true

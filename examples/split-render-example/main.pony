@@ -106,8 +106,8 @@ actor Main
       end
       for (i, d) in dynamics.pairs() do
         env.out.print(
-          "  dynamic[" + i.string() + "]: \""
-          + d + "\"")
+          "  dynamic[" + i.string() + "]: \"" +
+          d + "\"")
       end
     else
       env.err.print("Could not render HTML template :(")

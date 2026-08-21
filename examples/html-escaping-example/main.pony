@@ -9,10 +9,10 @@ actor Main
     let template =
       try
         HTMLTemplate.parse(
-          "<h1>{{ title }}</h1>\n"
-          + "<p>{{ message }}</p>\n"
-          + "<a href=\"{{ url }}\">"
-          + "{{ link_text }}</a>")?
+          "<h1>{{ title }}</h1>\n" +
+          "<p>{{ message }}</p>\n" +
+          "<a href=\"{{ url }}\">" +
+          "{{ link_text }}</a>")?
       else
         env.err.print("Could not parse template :(")
         env.exitcode(1)

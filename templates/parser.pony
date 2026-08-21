@@ -353,8 +353,8 @@ primitive _StmtParser
           break
         end
         // Printable ASCII except double quote: ' ' to '!' and '#' to '~'
-        if ((c >= 0x20) and (c <= 0x21))
-          or ((c >= 0x23) and (c <= 0x7E))
+        if ((c >= 0x20) and (c <= 0x21)) or
+          ((c >= 0x23) and (c <= 0x7E))
         then
           cursor.advance()
         else error
@@ -376,8 +376,8 @@ primitive _StmtParser
     try
       while true do
         let c = cursor.peek()?
-        if _is_alpha(c) or _is_digit(c)
-          or (c == '_') or (c == '-')
+        if _is_alpha(c) or _is_digit(c) or
+          (c == '_') or (c == '-')
         then
           cursor.advance()
           count = count + 1
