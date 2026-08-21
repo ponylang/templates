@@ -147,9 +147,9 @@ primitive _HTMLEscape
 
   fun _has_dangerous_scheme(lower: String val): Bool =>
     // Caller must pass a trimmed, lowered string.
-    (lower.substring(0, 11) == "javascript:")
-      or (lower.substring(0, 9) == "vbscript:")
-      or (lower.substring(0, 5) == "data:")
+    (lower.substring(0, 11) == "javascript:") or
+      (lower.substring(0, 9) == "vbscript:") or
+      (lower.substring(0, 5) == "data:")
 
   fun _percent_encode(raw: String): String val =>
     recover val
@@ -167,17 +167,17 @@ primitive _HTMLEscape
     end
 
   fun _is_url_safe(c: U8): Bool =>
-    ((c >= 'a') and (c <= 'z'))
-      or ((c >= 'A') and (c <= 'Z'))
-      or ((c >= '0') and (c <= '9'))
-      or (c == '-') or (c == '_') or (c == '.')
-      or (c == '~') or (c == '/') or (c == ':')
-      or (c == '?') or (c == '#') or (c == '[')
-      or (c == ']') or (c == '@') or (c == '!')
-      or (c == '$') or (c == '&') or (c == '\'')
-      or (c == '(') or (c == ')') or (c == '*')
-      or (c == '+') or (c == ',') or (c == ';')
-      or (c == '=') or (c == '%')
+    ((c >= 'a') and (c <= 'z')) or
+      ((c >= 'A') and (c <= 'Z')) or
+      ((c >= '0') and (c <= '9')) or
+      (c == '-') or (c == '_') or (c == '.') or
+      (c == '~') or (c == '/') or (c == ':') or
+      (c == '?') or (c == '#') or (c == '[') or
+      (c == ']') or (c == '@') or (c == '!') or
+      (c == '$') or (c == '&') or (c == '\'') or
+      (c == '(') or (c == ')') or (c == '*') or
+      (c == '+') or (c == ',') or (c == ';') or
+      (c == '=') or (c == '%')
 
   fun _hex_escape(out: String ref, c: U8) =>
     out.append("\\x")
@@ -191,11 +191,11 @@ primitive _HTMLEscape
     out.push(' ')
 
   fun _is_css_safe(c: U8): Bool =>
-    ((c >= 'a') and (c <= 'z'))
-      or ((c >= 'A') and (c <= 'Z'))
-      or ((c >= '0') and (c <= '9'))
-      or (c == ' ') or (c == '_') or (c == '-')
-      or (c == '.') or (c == ',') or (c == '/')
+    ((c >= 'a') and (c <= 'z')) or
+      ((c >= 'A') and (c <= 'Z')) or
+      ((c >= '0') and (c <= '9')) or
+      (c == ' ') or (c == '_') or (c == '-') or
+      (c == '.') or (c == ',') or (c == '/')
 
   fun _hex_digit(n: U8): U8 =>
     if n < 10 then '0' + n

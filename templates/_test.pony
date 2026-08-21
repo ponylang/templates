@@ -355,9 +355,9 @@ primitive \nodoc\ _Generators
         if (s.size() >= 3) and s.at("if", 0) then
           try
             let c = s(2)?
-            if ((c >= 'a') and (c <= 'z'))
-              or ((c >= 'A') and (c <= 'Z'))
-              or (c == '_')
+            if ((c >= 'a') and (c <= 'z')) or
+              ((c >= 'A') and (c <= 'Z')) or
+              (c == '_')
             then
               return (consume s, false)
             end
@@ -370,9 +370,9 @@ primitive \nodoc\ _Generators
         if (s.size() >= 6) and s.at("block", 0) then
           try
             let c = s(5)?
-            if ((c >= 'a') and (c <= 'z'))
-              or ((c >= 'A') and (c <= 'Z'))
-              or (c == '_')
+            if ((c >= 'a') and (c <= 'z')) or
+              ((c >= 'A') and (c <= 'Z')) or
+              (c == '_')
             then
               return (consume s, false)
             end
@@ -507,9 +507,9 @@ primitive \nodoc\ _Generators
     """
     // Printable ASCII: space (0x20) through ~ (0x7E), excluding " (0x22)
     let chars: String val =
-      " !#$%&'()*+,-./0123456789:;<=>?@"
-      + "ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`"
-      + "abcdefghijklmnopqrstuvwxyz{|}~"
+      " !#$%&'()*+,-./0123456789:;<=>?@" +
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`" +
+      "abcdefghijklmnopqrstuvwxyz{|}~"
     Generator[String](
       object is GenObj[String]
         fun generate(rnd: Randomness): String^ =>
@@ -529,10 +529,10 @@ primitive \nodoc\ _Generators
     can never appear inside the comment body.
     """
     let chars: String val =
-      " !\"#$%&'()*+,-./"
-      + "0123456789:;<=>?@"
-      + "ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`"
-      + "abcdefghijklmnopqrstuvwxyz{|~"
+      " !\"#$%&'()*+,-./" +
+      "0123456789:;<=>?@" +
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`" +
+      "abcdefghijklmnopqrstuvwxyz{|~"
     Generator[String](
       object is GenObj[String]
         fun generate(rnd: Randomness): String^ =>
@@ -553,10 +553,10 @@ primitive \nodoc\ _Generators
     `{{end}}`.
     """
     let chars: String val =
-      " !\"#$%&'()*+,-./"
-      + "0123456789:;<=>?@"
-      + "ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`"
-      + "abcdefghijklmnopqrstuvwxyz|}~"
+      " !\"#$%&'()*+,-./" +
+      "0123456789:;<=>?@" +
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`" +
+      "abcdefghijklmnopqrstuvwxyz|}~"
     Generator[String](
       object is GenObj[String]
         fun generate(rnd: Randomness): String^ =>
@@ -595,8 +595,8 @@ primitive \nodoc\ _Generators
     Generates printable ASCII text with no `{` character, length 0-50.
     """
     let chars: String val =
-      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-      + "0123456789 !\"#$%&'()*+,-./:;<=>?@[\\]^_`|}~\t\n\r"
+      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ" +
+      "0123456789 !\"#$%&'()*+,-./:;<=>?@[\\]^_`|}~\t\n\r"
     let char_gen = Generators.usize(0, chars.size() - 1)
       .map[U8]({(idx) =>
         try chars(idx)? else ' ' end

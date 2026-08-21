@@ -397,8 +397,8 @@ primitive _ParserCommon
       if left_trim then start_pos + 3 else start_pos + 2 end
     let right_trim =
       try
-        (end_pos > stmt_start)
-          and (source((end_pos - 1).usize())? == '-')
+        (end_pos > stmt_start) and
+          (source((end_pos - 1).usize())? == '-')
       else false
       end
     let stmt_end: ISize =
@@ -466,9 +466,9 @@ primitive _ParserCommon
     // Check for "raw" keyword
     if (i + 3) > limit then return false end
     try
-      if (source(i)? != 'r')
-        or (source(i + 1)? != 'a')
-        or (source(i + 2)? != 'w')
+      if (source(i)? != 'r') or
+        (source(i + 1)? != 'a') or
+        (source(i + 2)? != 'w')
       then
         return false
       end
@@ -508,8 +508,8 @@ primitive _ParserCommon
         if lt then open_pos + 3 else open_pos + 2 end
       let rt =
         try
-          (close_pos > content_start)
-            and (source((close_pos - 1).usize())? == '-')
+          (close_pos > content_start) and
+            (source((close_pos - 1).usize())? == '-')
         else false
         end
       let content_end: ISize =
@@ -553,8 +553,8 @@ primitive _ParserCommon
       end
     let raw_right_trim =
       try
-        (raw_close > raw_stmt_start)
-          and (source((raw_close - 1).usize())? == '-')
+        (raw_close > raw_stmt_start) and
+          (source((raw_close - 1).usize())? == '-')
       else false
       end
 
@@ -597,8 +597,8 @@ primitive _ParserCommon
         i = i + 1
         i = _skip_to_close_quote(source, i, limit)?
       elseif
-        (source(i.usize())? == '}')
-          and (source((i + 1).usize())? == '}')
+        (source(i.usize())? == '}') and
+          (source((i + 1).usize())? == '}')
       then
         return i
       end

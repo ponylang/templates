@@ -150,10 +150,10 @@ class _HTMLContextTracker
 
   fun _starts_comment(): Bool =>
     try
-      (_tag_name.size() >= 3)
-        and (_tag_name(0)? == '!')
-        and (_tag_name(1)? == '-')
-        and (_tag_name(2)? == '-')
+      (_tag_name.size() >= 3) and
+        (_tag_name(0)? == '!') and
+        (_tag_name(1)? == '-') and
+        (_tag_name(2)? == '-')
     else false
     end
 
@@ -327,17 +327,17 @@ class _HTMLContextTracker
 
   fun _is_url_attr(): Bool =>
     // _attr_name is already lowered during construction
-    (_attr_name == "href") or (_attr_name == "src")
-      or (_attr_name == "action")
-      or (_attr_name == "formaction") or (_attr_name == "cite")
-      or (_attr_name == "data") or (_attr_name == "poster")
+    (_attr_name == "href") or (_attr_name == "src") or
+      (_attr_name == "action") or
+      (_attr_name == "formaction") or (_attr_name == "cite") or
+      (_attr_name == "data") or (_attr_name == "poster")
 
   fun _is_js_attr(): Bool =>
     // _attr_name is already lowered during construction
     try
-      (_attr_name.size() >= 2)
-        and (_attr_name(0)? == 'o')
-        and (_attr_name(1)? == 'n')
+      (_attr_name.size() >= 2) and
+        (_attr_name(0)? == 'o') and
+        (_attr_name(1)? == 'n')
     else false
     end
 
@@ -356,19 +356,19 @@ class _HTMLContextTracker
     c
 
   fun eq(other: _HTMLContextTracker box): Bool =>
-    (_state is other._state)
-      and (_tag_name == other._tag_name)
-      and (_attr_name == other._attr_name)
-      and (_tag_name_done == other._tag_name_done)
+    (_state is other._state) and
+      (_tag_name == other._tag_name) and
+      (_attr_name == other._attr_name) and
+      (_tag_name_done == other._tag_name_done)
 
   fun _is_ws(c: U8): Bool =>
     (c == ' ') or (c == '\t') or (c == '\n') or (c == '\r')
 
   fun _is_name_char(c: U8): Bool =>
-    ((c >= 'a') and (c <= 'z'))
-      or ((c >= 'A') and (c <= 'Z'))
-      or ((c >= '0') and (c <= '9'))
-      or (c == '-') or (c == '_')
+    ((c >= 'a') and (c <= 'z')) or
+      ((c >= 'A') and (c <= 'Z')) or
+      ((c >= '0') and (c <= '9')) or
+      (c == '-') or (c == '_')
 
   fun _lower(c: U8): U8 =>
     if (c >= 'A') and (c <= 'Z') then c + 32 else c end
