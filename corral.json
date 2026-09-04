@@ -5,7 +5,7 @@
   "deps": [
     {
       "locator": "github.com/ponylang/valbytes.git",
-      "version": "0.6.2"
+      "version": "0.7.0"
     }
   ],
   "info": {
