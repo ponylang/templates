@@ -18,6 +18,7 @@ All notable changes to this project will be documented in this file. This projec
 ### Changed
 
 - Update to work with ponyc 0.70.0 ([PR #108](https://github.com/ponylang/templates/pull/108))
+- Rename `HtmlTemplate` to `HTMLTemplate` ([PR #106](https://github.com/ponylang/templates/pull/106))
 
 ## [0.3.2] - 2026-03-14
 
