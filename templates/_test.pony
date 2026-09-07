@@ -334,13 +334,13 @@ primitive \nodoc\ _Generators
     let rest = _alnum_chars()
     Generator[String](
       object is GenObj[String]
-        fun generate(rnd: Randomness): String^ =>
-          let len = rnd.usize(1, 20)
+        fun generate(rnd: Randomness): String^ ? =>
+          let len = rnd.usize(1, 20)?
           let s = recover iso String(len) end
-          try s.push(first(rnd.usize(0, first.size() - 1))?) end
+          try s.push(first(rnd.usize(0, first.size() - 1)?)?) end
           var i: USize = 1
           while i < len do
-            try s.push(rest(rnd.usize(0, rest.size() - 1))?) end
+            try s.push(rest(rnd.usize(0, rest.size() - 1)?)?) end
             i = i + 1
           end
           consume s
@@ -455,12 +455,12 @@ primitive \nodoc\ _Generators
       "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-"
     Generator[String](
       object is GenObj[String]
-        fun generate(rnd: Randomness): String^ =>
-          let len = rnd.usize(1, 20)
+        fun generate(rnd: Randomness): String^ ? =>
+          let len = rnd.usize(1, 20)?
           let name = recover iso String(len) end
           var i: USize = 0
           while i < len do
-            try name.push(chars(rnd.usize(0, chars.size() - 1))?) end
+            try name.push(chars(rnd.usize(0, chars.size() - 1)?)?) end
             i = i + 1
           end
           "include \"" + consume name + "\""
@@ -474,12 +474,12 @@ primitive \nodoc\ _Generators
       "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-"
     Generator[String](
       object is GenObj[String]
-        fun generate(rnd: Randomness): String^ =>
-          let len = rnd.usize(1, 20)
+        fun generate(rnd: Randomness): String^ ? =>
+          let len = rnd.usize(1, 20)?
           let name = recover iso String(len) end
           var i: USize = 0
           while i < len do
-            try name.push(chars(rnd.usize(0, chars.size() - 1))?) end
+            try name.push(chars(rnd.usize(0, chars.size() - 1)?)?) end
             i = i + 1
           end
           "extends \"" + consume name + "\""
@@ -512,12 +512,12 @@ primitive \nodoc\ _Generators
       "abcdefghijklmnopqrstuvwxyz{|}~"
     Generator[String](
       object is GenObj[String]
-        fun generate(rnd: Randomness): String^ =>
-          let len = rnd.usize(0, 30)
+        fun generate(rnd: Randomness): String^ ? =>
+          let len = rnd.usize(0, 30)?
           let s = recover iso String(len) end
           var i: USize = 0
           while i < len do
-            try s.push(chars(rnd.usize(0, chars.size() - 1))?) end
+            try s.push(chars(rnd.usize(0, chars.size() - 1)?)?) end
             i = i + 1
           end
           consume s
@@ -535,12 +535,12 @@ primitive \nodoc\ _Generators
       "abcdefghijklmnopqrstuvwxyz{|~"
     Generator[String](
       object is GenObj[String]
-        fun generate(rnd: Randomness): String^ =>
-          let len = rnd.usize(0, 30)
+        fun generate(rnd: Randomness): String^ ? =>
+          let len = rnd.usize(0, 30)?
           let s = recover iso String(len) end
           var i: USize = 0
           while i < len do
-            try s.push(chars(rnd.usize(0, chars.size() - 1))?) end
+            try s.push(chars(rnd.usize(0, chars.size() - 1)?)?) end
             i = i + 1
           end
           consume s
@@ -559,12 +559,12 @@ primitive \nodoc\ _Generators
       "abcdefghijklmnopqrstuvwxyz|}~"
     Generator[String](
       object is GenObj[String]
-        fun generate(rnd: Randomness): String^ =>
-          let len = rnd.usize(0, 30)
+        fun generate(rnd: Randomness): String^ ? =>
+          let len = rnd.usize(0, 30)?
           let s = recover iso String(len) end
           var i: USize = 0
           while i < len do
-            try s.push(chars(rnd.usize(0, chars.size() - 1))?) end
+            try s.push(chars(rnd.usize(0, chars.size() - 1)?)?) end
             i = i + 1
           end
           consume s
