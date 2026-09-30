@@ -1,6 +1,5 @@
 use "collections"
 use "files"
-use "pony_check"
 use "pony_test"
 
 actor \nodoc\ Main is TestList
@@ -19,28 +18,25 @@ actor \nodoc\ Main is TestList
     test(_TestTemplateValuesStore)
     test(_TestTemplateValuesParentChain)
     test(_TestTemplateValuesLookup)
-    test(Property1UnitTest[String](_PropTemplateValuesRoundtrip))
-    test(Property1UnitTest[(String, String, String)](
-      _PropTemplateValuesOverrideShadows))
+    test.property(_PropTemplateValuesRoundtrip)
+    test.property(_PropTemplateValuesOverrideShadows)
 
     // TemplateValues.scope() tests
     test(_TestTemplateValuesScopeEmpty)
     test(_TestTemplateValuesScopeFallthrough)
     test(_TestTemplateValuesScopeShadow)
     test(_TestTemplateValuesScopeMultiLevel)
-    test(Property1UnitTest[(String, String)](
-      _PropTemplateValuesScopeFallthrough))
-    test(Property1UnitTest[(String, String, String)](
-      _PropTemplateValuesScopeShadows))
+    test.property(_PropTemplateValuesScopeFallthrough)
+    test.property(_PropTemplateValuesScopeShadows)
 
     // Parser tests (Step 4)
-    test(Property1UnitTest[String](_PropValidPropParsesToPropNode))
-    test(Property1UnitTest[String](_PropValidPipeParsesToPipeNode))
-    test(Property1UnitTest[String](_PropValidLoopParsesToLoopNode))
-    test(Property1UnitTest[String](_PropValidIfParsesToIfNode))
-    test(Property1UnitTest[String](_PropValidIfNotParsesToIfNotNode))
-    test(Property1UnitTest[String](_PropValidElseIfParsesToElseIfNode))
-    test(Property1UnitTest[box->String](_PropInvalidStmtErrors))
+    test.property(_PropValidPropParsesToPropNode)
+    test.property(_PropValidPipeParsesToPipeNode)
+    test.property(_PropValidLoopParsesToLoopNode)
+    test.property(_PropValidIfParsesToIfNode)
+    test.property(_PropValidIfNotParsesToIfNotNode)
+    test.property(_PropValidElseIfParsesToElseIfNode)
+    test.property(_PropInvalidStmtErrors)
     test(_TestParserNodeFields)
     test(_TestParserPipeNodeFields)
     test(_TestParserKeywordAmbiguity)
@@ -56,10 +52,10 @@ actor \nodoc\ Main is TestList
     test(_TestParserPipeNotInControlFlow)
 
     // Template render tests (Step 6)
-    test(Property1UnitTest[String](_PropLiteralIdentity))
-    test(Property1UnitTest[String](_PropRenderDeterminism))
-    test(Property1UnitTest[(String, String)](_PropVariableSubstitution))
-    test(Property1UnitTest[String](_PropMissingVariableRendersEmpty))
+    test.property(_PropLiteralIdentity)
+    test.property(_PropRenderDeterminism)
+    test.property(_PropVariableSubstitution)
+    test.property(_PropMissingVariableRendersEmpty)
     test(_TestRenderNestedLoop)
     test(_TestRenderLoopWithIf)
     test(_TestRenderIfWithSequence)
@@ -86,10 +82,9 @@ actor \nodoc\ Main is TestList
     test(_TestRenderNestedIfElse)
 
     // Filter pipe render tests
-    test(Property1UnitTest[String](_PropPipeBasicFilter))
-    test(Property1UnitTest[(String, String)](_PropPipeDefaultMissing))
-    test(Property1UnitTest[(String, String, String)](
-      _PropPipeDefaultPresent))
+    test.property(_PropPipeBasicFilter)
+    test.property(_PropPipeDefaultMissing)
+    test.property(_PropPipeDefaultPresent)
     test(_TestRenderPipeUpper)
     test(_TestRenderPipeLower)
     test(_TestRenderPipeTrim)
@@ -107,7 +102,7 @@ actor \nodoc\ Main is TestList
     test(_TestRenderPipeOverrideBuiltin)
 
     // Include parser tests
-    test(Property1UnitTest[String](_PropValidIncludeParsesToIncludeNode))
+    test.property(_PropValidIncludeParsesToIncludeNode)
     test(_TestParserIncludeNodeFields)
     test(_TestParserIncludeKeywordAmbiguity)
 
@@ -124,8 +119,8 @@ actor \nodoc\ Main is TestList
     test(_TestRenderIncludeWithBlocks)
 
     // Extends/block parser tests
-    test(Property1UnitTest[String](_PropValidExtendsParsesToExtendsNode))
-    test(Property1UnitTest[String](_PropValidBlockParsesToBlockNode))
+    test.property(_PropValidExtendsParsesToExtendsNode)
+    test.property(_PropValidBlockParsesToBlockNode)
     test(_TestParserExtendsBlockNodeFields)
     test(_TestParserExtendsBlockKeywordAmbiguity)
 
@@ -153,11 +148,11 @@ actor \nodoc\ Main is TestList
     test(_TestRenderPipeLiteralDefault)
     test(_TestRenderPipeLiteralReplace)
     test(_TestParserPipeLiteralSource)
-    test(Property1UnitTest[String](_PropPipeLiteralUpper))
+    test.property(_PropPipeLiteralUpper)
 
     // Default value render tests (using pipe syntax)
-    test(Property1UnitTest[(String, String)](_PropDefaultWhenMissing))
-    test(Property1UnitTest[(String, String, String)](_PropDefaultWhenPresent))
+    test.property(_PropDefaultWhenMissing)
+    test.property(_PropDefaultWhenPresent)
     test(_TestRenderDefaultBasic)
     test(_TestRenderDefaultWithDottedProp)
     test(_TestRenderDefaultInsideLoop)
@@ -176,11 +171,11 @@ actor \nodoc\ Main is TestList
     test(_TestTrimAtStart)
     test(_TestTrimAtEnd)
     test(_TestTrimProducesEmptyLiteral)
-    test(Property1UnitTest[String](_PropTrimDeterminism))
+    test.property(_PropTrimDeterminism)
 
     // Comment tests
-    test(Property1UnitTest[String](_PropCommentInvisible))
-    test(Property1UnitTest[(String, String)](_PropCommentBodyIrrelevant))
+    test.property(_PropCommentInvisible)
+    test.property(_PropCommentBodyIrrelevant)
     test(_TestCommentBasic)
     test(_TestCommentWithTrim)
     test(_TestCommentBeforeExtends)
@@ -194,8 +189,8 @@ actor \nodoc\ Main is TestList
     test(_TestCommentWithQuotes)
 
     // Raw block tests
-    test(Property1UnitTest[String](_PropRawBlockContentIdentity))
-    test(Property1UnitTest[String](_PropRawBlockSurroundingLiteralsPreserved))
+    test.property(_PropRawBlockContentIdentity)
+    test.property(_PropRawBlockSurroundingLiteralsPreserved)
     test(_TestRawBasic)
     test(_TestRawWithTrim)
     test(_TestRawWithTemplateDelimiters)
@@ -233,7 +228,7 @@ actor \nodoc\ Main is TestList
     test(_TestContextClosingTag)
     test(_TestContextCaseInsensitiveClose)
     test(_TestContextCloseTagWhitespace)
-    test(Property1UnitTest[String](_PropContextTextRoundtrip))
+    test.property(_PropContextTextRoundtrip)
 
     // HTML escape function tests
     test(_TestEscapeHTMLText)
@@ -248,8 +243,8 @@ actor \nodoc\ Main is TestList
     test(_TestEscapeComment)
     test(_TestEscapeRcdata)
     test(_TestEscapeErrorContext)
-    test(Property1UnitTest[String](_PropEscapeHTMLNoUnescapedChars))
-    test(Property1UnitTest[String](_PropEscapeRcdataNoUnescapedChars))
+    test.property(_PropEscapeHTMLNoUnescapedChars)
+    test.property(_PropEscapeRcdataNoUnescapedChars)
 
     // RenderableValue tests
     test(_TestHTMLEscapingRenderer)
@@ -271,7 +266,7 @@ actor \nodoc\ Main is TestList
     test(_TestHTMLTemplateCommentContext)
     test(_TestHTMLTemplateCSSAttrContext)
     test(_TestHTMLTemplateRcdataContext)
-    test(Property1UnitTest[String](_PropHTMLTemplateEscapesInText))
+    test.property(_PropHTMLTemplateEscapesInText)
 
     // render_split tests
     test(_TestRenderSplitEmpty)
@@ -287,12 +282,9 @@ actor \nodoc\ Main is TestList
     test(_TestRenderSplitBlockTransparent)
     test(_TestRenderSplitNestedControlFlow)
     test(_TestRenderSplitPipe)
-    test(Property1UnitTest[(String, String, String)](
-      _PropRenderSplitRoundtrip))
-    test(Property1UnitTest[(String, String, String)](
-      _PropRenderSplitInterleaving))
-    test(Property1UnitTest[(String, String, String)](
-      _PropHTMLRenderSplitRoundtrip))
+    test.property(_PropRenderSplitRoundtrip)
+    test.property(_PropRenderSplitInterleaving)
+    test.property(_PropHTMLRenderSplitRoundtrip)
 
     // render_to tests
     test(_TestRenderToAlternation)
@@ -334,13 +326,13 @@ primitive \nodoc\ _Generators
     let rest = _alnum_chars()
     Generator[String](
       object is GenObj[String]
-        fun generate(rnd: Randomness): String^ ? =>
-          let len = rnd.usize(1, 20)?
+        fun generate(rnd: Randomness): String^ =>
+          let len = rnd.usize(1, 20)
           let s = recover iso String(len) end
-          try s.push(first(rnd.usize(0, first.size() - 1)?)?) end
+          try s.push(first(rnd.usize(0, first.size() - 1))?) end
           var i: USize = 1
           while i < len do
-            try s.push(rest(rnd.usize(0, rest.size() - 1)?)?) end
+            try s.push(rest(rnd.usize(0, rest.size() - 1))?) end
             i = i + 1
           end
           consume s
@@ -455,12 +447,12 @@ primitive \nodoc\ _Generators
       "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-"
     Generator[String](
       object is GenObj[String]
-        fun generate(rnd: Randomness): String^ ? =>
-          let len = rnd.usize(1, 20)?
+        fun generate(rnd: Randomness): String^ =>
+          let len = rnd.usize(1, 20)
           let name = recover iso String(len) end
           var i: USize = 0
           while i < len do
-            try name.push(chars(rnd.usize(0, chars.size() - 1)?)?) end
+            try name.push(chars(rnd.usize(0, chars.size() - 1))?) end
             i = i + 1
           end
           "include \"" + consume name + "\""
@@ -474,12 +466,12 @@ primitive \nodoc\ _Generators
       "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-"
     Generator[String](
       object is GenObj[String]
-        fun generate(rnd: Randomness): String^ ? =>
-          let len = rnd.usize(1, 20)?
+        fun generate(rnd: Randomness): String^ =>
+          let len = rnd.usize(1, 20)
           let name = recover iso String(len) end
           var i: USize = 0
           while i < len do
-            try name.push(chars(rnd.usize(0, chars.size() - 1)?)?) end
+            try name.push(chars(rnd.usize(0, chars.size() - 1))?) end
             i = i + 1
           end
           "extends \"" + consume name + "\""
@@ -512,12 +504,12 @@ primitive \nodoc\ _Generators
       "abcdefghijklmnopqrstuvwxyz{|}~"
     Generator[String](
       object is GenObj[String]
-        fun generate(rnd: Randomness): String^ ? =>
-          let len = rnd.usize(0, 30)?
+        fun generate(rnd: Randomness): String^ =>
+          let len = rnd.usize(0, 30)
           let s = recover iso String(len) end
           var i: USize = 0
           while i < len do
-            try s.push(chars(rnd.usize(0, chars.size() - 1)?)?) end
+            try s.push(chars(rnd.usize(0, chars.size() - 1))?) end
             i = i + 1
           end
           consume s
@@ -535,12 +527,12 @@ primitive \nodoc\ _Generators
       "abcdefghijklmnopqrstuvwxyz{|~"
     Generator[String](
       object is GenObj[String]
-        fun generate(rnd: Randomness): String^ ? =>
-          let len = rnd.usize(0, 30)?
+        fun generate(rnd: Randomness): String^ =>
+          let len = rnd.usize(0, 30)
           let s = recover iso String(len) end
           var i: USize = 0
           while i < len do
-            try s.push(chars(rnd.usize(0, chars.size() - 1)?)?) end
+            try s.push(chars(rnd.usize(0, chars.size() - 1))?) end
             i = i + 1
           end
           consume s
@@ -559,12 +551,12 @@ primitive \nodoc\ _Generators
       "abcdefghijklmnopqrstuvwxyz|}~"
     Generator[String](
       object is GenObj[String]
-        fun generate(rnd: Randomness): String^ ? =>
-          let len = rnd.usize(0, 30)?
+        fun generate(rnd: Randomness): String^ =>
+          let len = rnd.usize(0, 30)
           let s = recover iso String(len) end
           var i: USize = 0
           while i < len do
-            try s.push(chars(rnd.usize(0, chars.size() - 1)?)?) end
+            try s.push(chars(rnd.usize(0, chars.size() - 1))?) end
             i = i + 1
           end
           consume s
@@ -738,7 +730,7 @@ class \nodoc\ iso _TestTemplateValuesLookup is UnitTest
       TemplateValues._lookup(_PropNode("missing", []))?
     })
 
-class \nodoc\ iso _PropTemplateValuesRoundtrip is Property1[String]
+class \nodoc\ iso _PropTemplateValuesRoundtrip is Property[String]
   fun name(): String => "TemplateValues roundtrip: store then retrieve"
 
   fun gen(): Generator[String] =>
@@ -751,7 +743,7 @@ class \nodoc\ iso _PropTemplateValuesRoundtrip is Property1[String]
     h.assert_eq[String](v, values(name')?.string()?)
 
 class \nodoc\ iso _PropTemplateValuesOverrideShadows
-  is Property1[(String, String, String)]
+  is Property[(String, String, String)]
   fun name(): String =>
     "TemplateValues: override shadows parent"
 
@@ -828,7 +820,7 @@ class \nodoc\ iso _TestTemplateValuesScopeMultiLevel is UnitTest
     })
 
 class \nodoc\ iso _PropTemplateValuesScopeFallthrough
-  is Property1[(String, String)]
+  is Property[(String, String)]
   fun name(): String =>
     "TemplateValues scope: parent values readable from child"
 
@@ -848,7 +840,7 @@ class \nodoc\ iso _PropTemplateValuesScopeFallthrough
     h.assert_eq[String](v, child(n)?.string()?)
 
 class \nodoc\ iso _PropTemplateValuesScopeShadows
-  is Property1[(String, String, String)]
+  is Property[(String, String, String)]
   fun name(): String =>
     "TemplateValues scope: child shadows parent, parent unchanged"
 
@@ -872,7 +864,7 @@ class \nodoc\ iso _PropTemplateValuesScopeShadows
     // Parent retains original
     h.assert_eq[String](parent_val, parent(n)?.string()?)
 
-class \nodoc\ iso _PropValidPropParsesToPropNode is Property1[String]
+class \nodoc\ iso _PropValidPropParsesToPropNode is Property[String]
   fun name(): String => "Parser: valid prop parses to _PropNode"
 
   fun gen(): Generator[String] =>
@@ -881,7 +873,7 @@ class \nodoc\ iso _PropValidPropParsesToPropNode is Property1[String]
   fun ref property(stmt: String, h: PropertyHelper) ? =>
     _StmtParser.parse(stmt)? as _PropNode
 
-class \nodoc\ iso _PropValidPipeParsesToPipeNode is Property1[String]
+class \nodoc\ iso _PropValidPipeParsesToPipeNode is Property[String]
   fun name(): String => "Parser: valid pipe parses to _PipeNode"
 
   fun gen(): Generator[String] =>
@@ -890,7 +882,7 @@ class \nodoc\ iso _PropValidPipeParsesToPipeNode is Property1[String]
   fun ref property(stmt: String, h: PropertyHelper) ? =>
     _StmtParser.parse(stmt)? as _PipeNode
 
-class \nodoc\ iso _PropValidLoopParsesToLoopNode is Property1[String]
+class \nodoc\ iso _PropValidLoopParsesToLoopNode is Property[String]
   fun name(): String => "Parser: valid loop parses to _LoopNode"
 
   fun gen(): Generator[String] =>
@@ -899,7 +891,7 @@ class \nodoc\ iso _PropValidLoopParsesToLoopNode is Property1[String]
   fun ref property(stmt: String, h: PropertyHelper) ? =>
     _StmtParser.parse(stmt)? as _LoopNode
 
-class \nodoc\ iso _PropValidIfParsesToIfNode is Property1[String]
+class \nodoc\ iso _PropValidIfParsesToIfNode is Property[String]
   fun name(): String => "Parser: valid if parses to _IfNode"
 
   fun gen(): Generator[String] =>
@@ -908,7 +900,7 @@ class \nodoc\ iso _PropValidIfParsesToIfNode is Property1[String]
   fun ref property(stmt: String, h: PropertyHelper) ? =>
     _StmtParser.parse(stmt)? as _IfNode
 
-class \nodoc\ iso _PropValidIfNotParsesToIfNotNode is Property1[String]
+class \nodoc\ iso _PropValidIfNotParsesToIfNotNode is Property[String]
   fun name(): String => "Parser: valid ifnot parses to _IfNotNode"
 
   fun gen(): Generator[String] =>
@@ -917,7 +909,7 @@ class \nodoc\ iso _PropValidIfNotParsesToIfNotNode is Property1[String]
   fun ref property(stmt: String, h: PropertyHelper) ? =>
     _StmtParser.parse(stmt)? as _IfNotNode
 
-class \nodoc\ iso _PropValidElseIfParsesToElseIfNode is Property1[String]
+class \nodoc\ iso _PropValidElseIfParsesToElseIfNode is Property[String]
   fun name(): String => "Parser: valid elseif parses to _ElseIfNode"
 
   fun gen(): Generator[String] =>
@@ -926,7 +918,7 @@ class \nodoc\ iso _PropValidElseIfParsesToElseIfNode is Property1[String]
   fun ref property(stmt: String, h: PropertyHelper) ? =>
     _StmtParser.parse(stmt)? as _ElseIfNode
 
-class \nodoc\ iso _PropInvalidStmtErrors is Property1[box->String]
+class \nodoc\ iso _PropInvalidStmtErrors is Property[box->String]
   fun name(): String => "Parser: invalid statements error"
 
   fun gen(): Generator[box->String] =>
@@ -1335,7 +1327,7 @@ class \nodoc\ iso _TestParserPipeNotInControlFlow is UnitTest
       _StmtParser.parse("elseif name | upper")?
     })
 
-class \nodoc\ iso _PropLiteralIdentity is Property1[String]
+class \nodoc\ iso _PropLiteralIdentity is Property[String]
   fun name(): String => "Render: literal text with no {{ is identity"
 
   fun gen(): Generator[String] =>
@@ -1345,7 +1337,7 @@ class \nodoc\ iso _PropLiteralIdentity is Property1[String]
     let template = Template.parse(text)?
     h.assert_eq[String](text, template.render(TemplateValues)?)
 
-class \nodoc\ iso _PropRenderDeterminism is Property1[String]
+class \nodoc\ iso _PropRenderDeterminism is Property[String]
   fun name(): String => "Render: same template + values = same output"
 
   fun gen(): Generator[String] =>
@@ -1358,7 +1350,7 @@ class \nodoc\ iso _PropRenderDeterminism is Property1[String]
     let r2 = template.render(values)?
     h.assert_eq[String](r1, r2)
 
-class \nodoc\ iso _PropVariableSubstitution is Property1[(String, String)]
+class \nodoc\ iso _PropVariableSubstitution is Property[(String, String)]
   fun name(): String => "Render: {{ n }} with values(n)=v renders as v"
 
   fun gen(): Generator[(String, String)] =>
@@ -1374,7 +1366,7 @@ class \nodoc\ iso _PropVariableSubstitution is Property1[(String, String)]
     values(n) = v
     h.assert_eq[String](v, template.render(values)?)
 
-class \nodoc\ iso _PropMissingVariableRendersEmpty is Property1[String]
+class \nodoc\ iso _PropMissingVariableRendersEmpty is Property[String]
   fun name(): String =>
     "Render: {{ n }} with no values renders empty"
 
@@ -1797,7 +1789,7 @@ class \nodoc\ iso _TestRenderNestedIfNotWithIf is UnitTest
     v2("a") = "yes"
     h.assert_eq[String]("has-A", template.render(v2)?)
 
-class \nodoc\ iso _PropPipeBasicFilter is Property1[String]
+class \nodoc\ iso _PropPipeBasicFilter is Property[String]
   fun name(): String =>
     "Render: {{ name | upper }} always equals name.upper()"
 
@@ -1813,7 +1805,7 @@ class \nodoc\ iso _PropPipeBasicFilter is Property1[String]
     h.assert_eq[String](consume expected, template.render(values)?)
 
 class \nodoc\ iso _PropPipeDefaultMissing
-  is Property1[(String, String)]
+  is Property[(String, String)]
   fun name(): String =>
     "Render: missing var with default always returns fallback"
 
@@ -1830,7 +1822,7 @@ class \nodoc\ iso _PropPipeDefaultMissing
     h.assert_eq[String](fallback, template.render(TemplateValues)?)
 
 class \nodoc\ iso _PropPipeDefaultPresent
-  is Property1[(String, String, String)]
+  is Property[(String, String, String)]
   fun name(): String =>
     "Render: present var with default always returns the var"
 
@@ -2099,7 +2091,7 @@ end
     values("x") = "hello"
     h.assert_eq[String]("OVERRIDDEN", template.render(values)?)
 
-class \nodoc\ iso _PropValidIncludeParsesToIncludeNode is Property1[String]
+class \nodoc\ iso _PropValidIncludeParsesToIncludeNode is Property[String]
   fun name(): String => "Parser: valid include parses to _IncludeNode"
 
   fun gen(): Generator[String] =>
@@ -2307,7 +2299,7 @@ class \nodoc\ iso _TestRenderIncludeWithBlocks is UnitTest
     v2("items") = TemplateValue(Array[TemplateValue])
     h.assert_eq[String]("Items: none", template.render(v2)?)
 
-class \nodoc\ iso _PropValidExtendsParsesToExtendsNode is Property1[String]
+class \nodoc\ iso _PropValidExtendsParsesToExtendsNode is Property[String]
   fun name(): String => "Parser: valid extends parses to _ExtendsNode"
 
   fun gen(): Generator[String] =>
@@ -2316,7 +2308,7 @@ class \nodoc\ iso _PropValidExtendsParsesToExtendsNode is Property1[String]
   fun ref property(stmt: String, h: PropertyHelper) ? =>
     _StmtParser.parse(stmt)? as _ExtendsNode
 
-class \nodoc\ iso _PropValidBlockParsesToBlockNode is Property1[String]
+class \nodoc\ iso _PropValidBlockParsesToBlockNode is Property[String]
   fun name(): String => "Parser: valid block parses to _BlockNode"
 
   fun gen(): Generator[String] =>
@@ -2662,7 +2654,7 @@ class \nodoc\ iso _TestRenderBlocksWithoutExtends is UnitTest
       "beforeDEFAULTafter", template.render(TemplateValues)?)
 
 class \nodoc\ iso _PropDefaultWhenMissing
-  is Property1[(String, String)]
+  is Property[(String, String)]
   fun name(): String =>
     "Render: missing variable renders default value"
 
@@ -2679,7 +2671,7 @@ class \nodoc\ iso _PropDefaultWhenMissing
     h.assert_eq[String](default_val, template.render(TemplateValues)?)
 
 class \nodoc\ iso _PropDefaultWhenPresent
-  is Property1[(String, String, String)]
+  is Property[(String, String, String)]
   fun name(): String =>
     "Render: present variable ignores default value"
 
@@ -2975,7 +2967,7 @@ class \nodoc\ iso _TestTrimProducesEmptyLiteral is UnitTest
       "onetwo",
       Template.parse("{{ a -}}   {{- b }}")?.render(values)?)
 
-class \nodoc\ iso _PropTrimDeterminism is Property1[String]
+class \nodoc\ iso _PropTrimDeterminism is Property[String]
   """
   Templates with trim markers produce the same output on repeated renders.
   """
@@ -3045,7 +3037,7 @@ class \nodoc\ iso _TestParserPipeLiteralSource is UnitTest
     else h.fail("expected _PipeNode"); error
     end
 
-class \nodoc\ iso _PropPipeLiteralUpper is Property1[String]
+class \nodoc\ iso _PropPipeLiteralUpper is Property[String]
   """
   For any generated string, `{{ "<string>" | upper }}` equals
   `string.upper()`.
@@ -3065,7 +3057,7 @@ class \nodoc\ iso _PropPipeLiteralUpper is Property1[String]
     let result = Template.parse(source)?.render(TemplateValues)?
     h.assert_eq[String](sample.upper(), result)
 
-class \nodoc\ iso _PropCommentInvisible is Property1[String]
+class \nodoc\ iso _PropCommentInvisible is Property[String]
   """
   For any generated comment body, `{{! body }}` renders as empty string.
   """
@@ -3081,7 +3073,7 @@ class \nodoc\ iso _PropCommentInvisible is Property1[String]
       Template.parse(source)?.render(TemplateValues)?)
 
 class \nodoc\ iso _PropCommentBodyIrrelevant
-  is Property1[(String, String)]
+  is Property[(String, String)]
   """
   Two templates differing only in comment body render identically, proving
   comment content is truly discarded.
@@ -3261,7 +3253,7 @@ class \nodoc\ iso _TestCommentWithQuotes is UnitTest
       Template.parse("a{{! single } brace }}b")?
         .render(TemplateValues)?)
 
-class \nodoc\ iso _PropRawBlockContentIdentity is Property1[String]
+class \nodoc\ iso _PropRawBlockContentIdentity is Property[String]
   """
   For any generated raw body, `{{raw}}<body>{{end}}` renders as `<body>`.
   """
@@ -3277,7 +3269,7 @@ class \nodoc\ iso _PropRawBlockContentIdentity is Property1[String]
       Template.parse(source)?.render(TemplateValues)?)
 
 class \nodoc\ iso _PropRawBlockSurroundingLiteralsPreserved
-  is Property1[String]
+  is Property[String]
   """
   Literals before and after a raw block are preserved in the output.
   """
@@ -3764,7 +3756,7 @@ class \nodoc\ iso _TestContextCloseTagWhitespace is UnitTest
     t3.feed_close_tag(closing3)
     h.assert_is[HTMLContext](CtxText, t3.context())
 
-class \nodoc\ iso _PropContextTextRoundtrip is Property1[String]
+class \nodoc\ iso _PropContextTextRoundtrip is Property[String]
   fun name(): String => "HTMLContext: text without < stays in text state"
 
   fun gen(): Generator[String] =>
@@ -3904,7 +3896,7 @@ class \nodoc\ iso _TestEscapeErrorContext is UnitTest
     let raw = "<script>alert('xss')</script>"
     h.assert_eq[String](raw, _HTMLEscape.for_context(CtxError, raw))
 
-class \nodoc\ iso _PropEscapeHTMLNoUnescapedChars is Property1[String]
+class \nodoc\ iso _PropEscapeHTMLNoUnescapedChars is Property[String]
   fun name(): String =>
     "HtmlEscape: html_text output never contains raw & < > \" '"
 
@@ -3952,7 +3944,7 @@ class \nodoc\ iso _PropEscapeHTMLNoUnescapedChars is Property1[String]
     end
     false
 
-class \nodoc\ iso _PropEscapeRcdataNoUnescapedChars is Property1[String]
+class \nodoc\ iso _PropEscapeRcdataNoUnescapedChars is Property[String]
   fun name(): String =>
     "HtmlEscape: rcdata output never contains raw < or &"
 
@@ -4213,7 +4205,7 @@ class \nodoc\ iso _TestHTMLTemplateRcdataContext is UnitTest
       h.fail("unexpected error")
     end
 
-class \nodoc\ iso _PropHTMLTemplateEscapesInText is Property1[String]
+class \nodoc\ iso _PropHTMLTemplateEscapesInText is Property[String]
   fun name(): String =>
     "HTMLTemplate: rendered text never contains raw < or >"
 
@@ -4488,7 +4480,7 @@ class \nodoc\ iso _TestRenderSplitPipe is UnitTest
     end
 
 class \nodoc\ iso _PropRenderSplitRoundtrip
-  is Property1[(String, String, String)]
+  is Property[(String, String, String)]
   """
   For a template with two variables, recombining render_split output
   produces the same string as render().
@@ -4527,7 +4519,7 @@ class \nodoc\ iso _PropRenderSplitRoundtrip
     end
 
 class \nodoc\ iso _PropRenderSplitInterleaving
-  is Property1[(String, String, String)]
+  is Property[(String, String, String)]
   """
   For a template with two variables, statics.size() ==
   dynamics.size() + 1.
@@ -4556,7 +4548,7 @@ class \nodoc\ iso _PropRenderSplitInterleaving
     end
 
 class \nodoc\ iso _PropHTMLRenderSplitRoundtrip
-  is Property1[(String, String, String)]
+  is Property[(String, String, String)]
   """
   For an HTMLTemplate with two variables in text context, recombining
   render_split output produces the same string as render().

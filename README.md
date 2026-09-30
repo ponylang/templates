@@ -8,11 +8,11 @@ Templates is beta-level software. As it gets used in more projects, we may make 
 
 ## Installation
 
+* Requires ponyc 0.74.0 or later.
 * Install [corral](https://github.com/ponylang/corral)
 * `corral add github.com/ponylang/templates.git --version 0.5.0`
 * `corral fetch` to fetch your dependencies
 * `use "templates"` to include this package
-* Requires ponyc 0.71.0 or later.
 * `corral run -- ponyc` to compile your application
 
 ## Usage
